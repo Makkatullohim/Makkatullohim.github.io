@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="uz-Cyrl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#102c29">
+  <meta name="description" content="Кунлик вирд, силсила ва ёдлаш дастури">
+  <title>Дил дафтари</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M30.8 9.8a15.5 15.5 0 1 0 7.4 24.7A16 16 0 0 1 30.8 9.8Z" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="17.5" cy="19" r="2" fill="currentColor"/>
+          <circle cx="27.5" cy="28.5" r="2" fill="currentColor"/>
+          <path d="m19 20.5 7 6.8" stroke="currentColor" stroke-width="1.3"/>
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <span class="eyebrow">МАЪНАВИЙ ЙЎЛ ДАФТАРИ</span>
+        <strong>Дил дафтари</strong>
+      </div>
+      <button class="date-chip" id="today-date" aria-label="Бугунги сана"></button>
+    </header>
+
+    <main id="app" aria-live="polite">
+      <section class="loading-state">
+        <div class="spinner"></div>
+        <p>Дарслар тайёрланмоқда…</p>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Асосий бўлимлар">
+      <button class="nav-item active" data-route="today"><span class="nav-icon">◉</span><span>Бугун</span></button>
+      <button class="nav-item" data-route="memory"><span class="nav-icon">✳</span><span>Ёдлаш</span></button>
+      <button class="nav-item" data-route="places"><span class="nav-icon">⌖</span><span>Силсила</span></button>
+      <button class="nav-item" data-route="guide"><span class="nav-icon">☷</span><span>Қўлланма</span></button>
+    </nav>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
