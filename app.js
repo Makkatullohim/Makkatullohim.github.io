@@ -22,6 +22,8 @@ const weekdayFormatter = new Intl.DateTimeFormat("uz-Cyrl-UZ", {
 let lessons = [];
 let pirData;
 let asmaData;
+let nasihatData = [];
+let activeNasihatIndex = 0;
 let state;
 let route = "today";
 let prayerView = "today";
@@ -275,6 +277,39 @@ function renderCounter(lesson, index, done) {
   </article>`;
 }
 
+function renderNasihat() {
+  const item = nasihatData[activeNasihatIndex];
+  if (!item) return "";
+  const steps = item.steps.map((step, index) => `<li class="nasihat-step">
+    <div class="nasihat-step-title"><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(step.term)}</strong></div>
+    <p>${escapeHtml(step.meaning)}</p>
+    <small><b>Мисол:</b> ${escapeHtml(step.example)}</small>
+  </li>`).join("");
+  return `<details class="nasihat-card">
+    <summary class="nasihat-cover">
+      <img class="nasihat-image" src="${escapeHtml(item.image)}" alt="" loading="eager">
+      <span class="nasihat-image-shade" aria-hidden="true"></span>
+      <span class="nasihat-cover-copy">
+        <span class="nasihat-label">БУГУНГИ НАСИҲАТ <i>${String(activeNasihatIndex + 1).padStart(2, "0")} / ${String(nasihatData.length).padStart(2, "0")}</i></span>
+        <span class="nasihat-quote">${escapeHtml(item.advice)}</span>
+        <span class="nasihat-pir">— ${escapeHtml(item.pir)}</span>
+        <span class="nasihat-open-hint">Маъноси ва мисолларини очиш <b>⌄</b></span>
+      </span>
+    </summary>
+    <div class="nasihat-expanded">
+      <span class="section-label">МАЪНОСИ</span>
+      <p class="nasihat-meaning">${escapeHtml(item.meaning)}</p>
+      <span class="section-label nasihat-steps-label">БОСҚИЧМА-БОСҚИЧ ЎЗЛАШТИРИШ</span>
+      <ol class="nasihat-steps">${steps}</ol>
+      <div class="nasihat-card-actions">
+        <a class="nasihat-source" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer">Манба ва нисбат ҳақида</a>
+        <button type="button" class="nasihat-next" data-action="nasihat-next">Яна бир насиҳат <span>→</span></button>
+      </div>
+      <small class="nasihat-attribution">${escapeHtml(item.attribution_note)}</small>
+    </div>
+  </details>`;
+}
+
 function renderToday() {
   syncDaily();
   document.getElementById("today-date").textContent = formatDate();
@@ -283,7 +318,7 @@ function renderToday() {
   const configured = Object.values(state.schedule || {}).filter(Boolean).length;
   const completed = lessons.filter((lesson, index) => Number(state.daily.counts[index] || 0) >= lesson.count).length;
   const progress = Math.round((completed / lessons.length) * 100);
-  return `<section class="home-hero">
+  return `${renderNasihat()}<section class="home-hero">
       <div class="home-night-scene">
         <span class="hero-star star-one">✦</span><span class="hero-star star-two">·</span><span class="hero-star star-three">✧</span>
         <div class="home-crescent" aria-hidden="true"></div>
@@ -759,51 +794,70 @@ function addMap() {
     }
     return ranges.map(([start, end]) => start === end ? `${start}` : `${start}–${end}`).join(", ");
   };
-  const markerGroup = window.L.markerClusterGroup
-    ? L.markerClusterGroup({
-        maxClusterRadius: 28,
-        showCoverageOnHover: false,
-        spiderfyOnMaxZoom: true,
-        zoomToBoundsOnClick: true,
-        iconCreateFunction: (cluster) => {
-          const numbers = cluster.getAllChildMarkers()
-            .map((marker) => marker.options.pirNumber)
-            .filter(Number.isFinite);
-          const label = formatPirRanges(numbers) || `${cluster.getChildCount()}`;
-          const width = Math.max(42, Math.min(132, 22 + label.length * 7));
-          return L.divIcon({
-            className: "pir-map-cluster-host",
-            html: `<span class="pir-map-cluster" title="Пирлар: ${label}">${label}</span>`,
-            iconSize: [width, 42],
-            iconAnchor: [width / 2, 21],
-          });
-        },
-      })
-    : null;
-  const bounds = [];
-  routePoints.forEach(({ person, place }, index) => {
-    const isSelected = selectedPerson === index;
-    const marker = L.marker([place.lat, place.lon], {
-      pirNumber: person.number,
-      icon: L.divIcon({
-        className: `pir-map-marker-host${isSelected ? " selected" : ""}`,
-        html: `<span class="pir-map-number">${person.number}</span>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-      }),
-      title: `${person.number}. ${person.name} — ${place.label}`,
-      riseOnHover: true,
+  const markerLayer = L.layerGroup().addTo(leafletMap);
+  const renderNumberedMarkers = () => {
+    markerLayer.clearLayers();
+    const zoom = leafletMap.getZoom();
+    const projected = routePoints.map((item) => ({
+      ...item,
+      point: leafletMap.project([item.place.lat, item.place.lon], zoom),
+    }));
+    const parents = projected.map((_, index) => index);
+    const findRoot = (index) => {
+      while (parents[index] !== index) {
+        parents[index] = parents[parents[index]];
+        index = parents[index];
+      }
+      return index;
+    };
+    for (let i = 0; i < projected.length; i += 1) {
+      for (let j = i + 1; j < projected.length; j += 1) {
+        if (projected[i].point.distanceTo(projected[j].point) <= 34) {
+          const rootI = findRoot(i);
+          const rootJ = findRoot(j);
+          if (rootI !== rootJ) parents[rootJ] = rootI;
+        }
+      }
+    }
+    const groups = new Map();
+    projected.forEach((item, index) => {
+      const root = findRoot(index);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(item);
     });
-    const otherPlaces = (person.locations || []).slice(1).map((item) => escapeHtml(item.label));
-    const otherPlacesText = otherPlaces.length ? `<br><small>Бошқа жойлар: ${otherPlaces.join(" · ")}</small>` : "";
-    marker.bindPopup(`<strong>${person.number}. ${escapeHtml(person.name)}</strong><br>${escapeHtml(place.label)}<br><small>Асосий тахминий жой</small>${otherPlacesText}`);
-    if (markerGroup) markerGroup.addLayer(marker);
-    else marker.addTo(leafletMap);
+    groups.forEach((items) => {
+      const numbers = items.map(({ person }) => person.number);
+      const label = formatPirRanges(numbers);
+      const lat = items.reduce((sum, item) => sum + item.place.lat, 0) / items.length;
+      const lon = items.reduce((sum, item) => sum + item.place.lon, 0) / items.length;
+      const isSelected = items.some(({ person }) => selectedPerson === person.number - 1);
+      const marker = L.circleMarker([lat, lon], {
+        radius: items.length > 1 ? 13 : 11,
+        color: isSelected ? "#102c29" : "#f8edcf",
+        weight: 2,
+        fillColor: isSelected ? "#e0bd70" : items.length > 1 ? "#e0bd70" : "#0d3b2d",
+        fillOpacity: 1,
+        opacity: 1,
+      }).addTo(markerLayer);
+      marker.bindTooltip(label, {
+        permanent: true,
+        direction: "center",
+        className: "pir-number-tooltip",
+        opacity: 1,
+      });
+      marker.bindPopup(items.map(({ person, place }) =>
+        `<div><strong>${person.number}. ${escapeHtml(person.name)}</strong><br>${escapeHtml(place.label)}</div>`
+      ).join("<hr>"));
+    });
+  };
+  const bounds = [];
+  routePoints.forEach(({ place }) => {
     bounds.push([place.lat, place.lon]);
   });
-  if (markerGroup) leafletMap.addLayer(markerGroup);
   if (bounds.length > 1) leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 4 });
   else if (bounds.length === 1) leafletMap.setView(bounds[0], 7);
+  renderNumberedMarkers();
+  leafletMap.on("zoomend", renderNumberedMarkers);
   setTimeout(() => leafletMap?.invalidateSize(), 100);
 }
 
@@ -925,7 +979,10 @@ app.addEventListener("click", (event) => {
   if (!button) return;
   const action = button.dataset.action;
 
-  if (action === "prayer-view") {
+  if (action === "nasihat-next") {
+    if (nasihatData.length > 1) activeNasihatIndex = (activeNasihatIndex + 1) % nasihatData.length;
+    render(true);
+  } else if (action === "prayer-view") {
     prayerView = button.dataset.view;
     render();
   } else if (action === "jump-to-lessons") {
@@ -1034,6 +1091,9 @@ app.addEventListener("change", (event) => {
 
 navButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    if (button.dataset.route === "today" && route !== "today" && nasihatData.length) {
+      activeNasihatIndex = (activeNasihatIndex + 1 + Math.floor(Math.random() * (nasihatData.length - 1))) % nasihatData.length;
+    }
     route = button.dataset.route;
     if (route === "guide") selectedLesson = null;
     render();
@@ -1042,15 +1102,19 @@ navButtons.forEach((button) => {
 
 async function boot() {
   try {
-    const [lessonResponse, pirsResponse, asmaResponse] = await Promise.all([
+    const [lessonResponse, pirsResponse, asmaResponse, nasihatResponse] = await Promise.all([
       fetch("lessons.json"),
       fetch("pirs.json"),
       fetch("asma_ul_husna.json"),
+      fetch("nasihatlar.json"),
     ]);
-    if (!lessonResponse.ok || !pirsResponse.ok || !asmaResponse.ok) throw new Error("Маълумот файллари очилмади.");
+    if (!lessonResponse.ok || !pirsResponse.ok || !asmaResponse.ok || !nasihatResponse.ok) throw new Error("Маълумот файллари очилмади.");
     lessons = await lessonResponse.json();
     pirData = await pirsResponse.json();
     asmaData = await asmaResponse.json();
+    const nasihatPayload = await nasihatResponse.json();
+    nasihatData = Array.isArray(nasihatPayload.items) ? nasihatPayload.items : [];
+    if (nasihatData.length) activeNasihatIndex = Math.floor(Math.random() * nasihatData.length);
     state = loadState();
     syncDaily();
     if (telegramApp) {
