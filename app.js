@@ -586,9 +586,8 @@ function renderMemoryPlan(type, meta, memory, session, remaining) {
     ${memoryTabs()}
     <section class="paper-card memory-plan">
       <div class="section-label">${escapeHtml(meta.title)}</div>
-      <div class="quota-row"><div><span>Кунлик меъёр</span><strong id="quota-value">${memory.quota} та</strong></div><span>Ёдда қолгани<br><b>${memory.completed.length} / ${all.length}</b></span></div>
-      <input class="quota-slider" type="range" min="1" max="${meta.max}" value="${memory.quota}" data-action="quota" aria-label="Кунлик ёдлаш миқдори">
-      <div class="quota-scale"><span>1 та</span><span>${meta.max} та</span></div>
+      <div class="quota-row"><div><span>Ёдда қолгани</span><strong>${memory.completed.length} / ${all.length}</strong></div><span>${escapeHtml(meta.short)} рўйхати</span></div>
+      <label class="quota-input-row"><span><strong>Кунлик меъёр</strong><small>1 дан ${meta.max} гача сон киритинг</small></span><span class="quota-input-control"><input class="quota-input" type="number" min="1" max="${meta.max}" step="1" inputmode="numeric" value="${memory.quota}" data-action="quota" aria-label="Кунлик ёдлаш миқдори"><b>та</b></span></label>
       <p class="small-note">Меъёрни ўзингиз танлайсиз. Ёддан айтиб текширишда адашган исмлар кейинги такрорлашга қолади.</p>
       <div class="section-label" style="margin-top:17px">Бугунги тўплам · ${session.items.length} ${meta.noun}</div>
       ${batchList ? `<div class="memorize-list">${batchList}</div>` : `<div class="empty-box" style="margin-top:12px"><strong>Барчаси ёдланган</strong><p>Бу рўйхатдаги барча бандлар белгиланди.</p></div>`}
@@ -1006,7 +1005,8 @@ function answerChoice(choiceIndex) {
 function setQuota(value) {
   const meta = memoryMeta(memoryType);
   const memory = memoryStore(memoryType);
-  memory.quota = Math.max(1, Math.min(meta.max, Number(value) || 1));
+  const entered = Number.parseInt(String(value), 10);
+  memory.quota = Math.max(1, Math.min(meta.max, Number.isFinite(entered) ? entered : 1));
   if (!memory.session || memory.session.status === "plan" || memory.session.status === "result") createMemorySession(memoryType);
   saveState();
   render(true);

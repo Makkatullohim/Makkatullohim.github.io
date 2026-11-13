@@ -99,8 +99,13 @@ button { -webkit-tap-highlight-color: transparent; }
 .quota-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 13px 0 6px; }
 .quota-row strong { color: var(--ink); font: 600 24px/1 "Noto Serif", Georgia, serif; }
 .quota-row span { color: var(--muted); font-size: 12px; }
-.quota-slider { width: 100%; accent-color: var(--gold-dark); }
-.quota-scale { display: flex; justify-content: space-between; color: #88948d; font-size: 10px; }
+.quota-input-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 13px 0 8px; padding: 12px 13px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.55); }
+.quota-input-row > span:first-child { display: grid; gap: 4px; }
+.quota-input-row strong { color: var(--ink); font-size: 13px; }
+.quota-input-row small { color: var(--muted); font-size: 10px; }
+.quota-input-control { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+.quota-input { width: 88px; min-height: 43px; padding: 8px 10px; border: 1px solid rgba(41,70,56,.22); border-radius: 10px; color: var(--ink); background: #fffdf7; font: 600 18px/1 "Noto Serif", Georgia, serif; text-align: center; font-variant-numeric: tabular-nums; }
+.quota-input:focus { outline: 2px solid rgba(169,126,55,.34); border-color: #a87936; }
 .memorize-list { display: grid; gap: 8px; margin-top: 17px; }
 .memorize-item { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.55); }
 .item-number { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #f3e7c8; background: var(--forest-3); font-size: 10px; font-weight: 700; }
@@ -466,6 +471,8 @@ body:not(.home-mode) .subnav button { color: #637568; }
 body:not(.home-mode) .subnav button.selected { color: #17372d; background: #dce8d5; box-shadow: 0 3px 12px rgba(42,67,49,.09); }
 body:not(.home-mode) .answer-question { color: #17372d; background: #e6eee0; }
 body:not(.home-mode) .answer-question .arabic { color: #17372d; }
+body:not(.home-mode) .quota-input-row { border-color: rgba(41,70,56,.14); background: rgba(255,255,255,.72); }
+body:not(.home-mode) .quota-input { border-color: rgba(41,70,56,.22); color: #17372d; background: #fffdf7; }
 body:not(.home-mode) .session-bar { color: #637568; }
 body:not(.home-mode) .empty-box { border-color: rgba(41,70,56,.24); color: #496553; background: rgba(255,255,255,.64); }
 body:not(.home-mode) .empty-box strong { color: #17372d; }
