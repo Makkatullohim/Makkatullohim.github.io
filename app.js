@@ -280,6 +280,7 @@ function renderCounter(lesson, index, done) {
 function renderNasihat() {
   const item = nasihatData[activeNasihatIndex];
   if (!item) return "";
+  const imageUrl = new URL(item.image, document.baseURI).href;
   const steps = item.steps.map((step, index) => `<li class="nasihat-step">
     <div class="nasihat-step-title"><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(step.term)}</strong></div>
     <p>${escapeHtml(step.meaning)}</p>
@@ -287,7 +288,7 @@ function renderNasihat() {
   </li>`).join("");
   return `<details class="nasihat-card">
     <summary class="nasihat-cover">
-      <img class="nasihat-image" src="${escapeHtml(item.image)}" alt="" loading="eager">
+      <img class="nasihat-image" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(item.pir)}" loading="eager">
       <span class="nasihat-image-shade" aria-hidden="true"></span>
       <span class="nasihat-cover-copy">
         <span class="nasihat-label">БУГУНГИ НАСИҲАТ <i>${String(activeNasihatIndex + 1).padStart(2, "0")} / ${String(nasihatData.length).padStart(2, "0")}</i></span>
@@ -295,6 +296,8 @@ function renderNasihat() {
         <span class="nasihat-pir">— ${escapeHtml(item.pir)}</span>
         <span class="nasihat-open-hint">Маъноси ва мисолларини очиш <b>⌄</b></span>
       </span>
+      <button type="button" class="nasihat-arrow nasihat-arrow-prev" data-action="nasihat-prev" aria-label="Аввалги насиҳат">←</button>
+      <button type="button" class="nasihat-arrow nasihat-arrow-next" data-action="nasihat-next" aria-label="Кейинги насиҳат">→</button>
     </summary>
     <div class="nasihat-expanded">
       <span class="section-label">МАЪНОСИ</span>
@@ -979,9 +982,16 @@ app.addEventListener("click", (event) => {
   if (!button) return;
   const action = button.dataset.action;
 
-  if (action === "nasihat-next") {
-    if (nasihatData.length > 1) activeNasihatIndex = (activeNasihatIndex + 1) % nasihatData.length;
+  if (action === "nasihat-next" || action === "nasihat-prev") {
+    event.preventDefault();
+    event.stopPropagation();
+    const keepNasihatOpen = app.querySelector(".nasihat-card")?.open || false;
+    if (nasihatData.length > 1) {
+      const direction = action === "nasihat-next" ? 1 : -1;
+      activeNasihatIndex = (activeNasihatIndex + direction + nasihatData.length) % nasihatData.length;
+    }
     render(true);
+    if (keepNasihatOpen) app.querySelector(".nasihat-card")?.setAttribute("open", "");
   } else if (action === "prayer-view") {
     prayerView = button.dataset.view;
     render();
@@ -1099,6 +1109,14 @@ navButtons.forEach((button) => {
     render();
   });
 });
+
+app.addEventListener("error", (event) => {
+  const image = event.target;
+  if (image instanceof HTMLImageElement && image.classList.contains("nasihat-image")) {
+    image.remove();
+    app.querySelector(".nasihat-cover")?.classList.add("nasihat-no-image");
+  }
+}, true);
 
 async function boot() {
   try {

@@ -297,13 +297,18 @@ body.home-mode #app { min-height: 0; }
 
 /* Daily pir advice card */
 .nasihat-card { margin: 0 0 20px; overflow: hidden; border: 1px solid rgba(221,190,124,.52); border-radius: 23px; color: #f8f3e6; background: #09231e; box-shadow: 0 13px 34px rgba(0,0,0,.25); }
-.nasihat-cover { position: relative; display: flex; min-height: 350px; align-items: flex-end; overflow: hidden; cursor: pointer; list-style: none; background: #0a2923; }
+.nasihat-cover { position: relative; display: flex; min-height: 350px; align-items: flex-end; overflow: hidden; cursor: pointer; list-style: none; background: radial-gradient(ellipse at 50% 30%, #1a5542, #0a2923 72%); }
 .nasihat-cover::-webkit-details-marker { display: none; }
 .nasihat-cover::marker { content: ""; }
 .nasihat-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 54%; transition: transform .35s ease; }
 .nasihat-card:hover .nasihat-image { transform: scale(1.025); }
 .nasihat-image-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(4,22,19,.02) 20%, rgba(4,22,19,.34) 48%, rgba(4,22,19,.92) 100%); }
-.nasihat-cover-copy { position: relative; z-index: 1; display: flex; width: 100%; flex-direction: column; gap: 9px; padding: 24px 21px 21px; }
+.nasihat-cover-copy { position: relative; z-index: 1; display: flex; width: 100%; flex-direction: column; gap: 9px; padding: 24px 68px 21px; }
+.nasihat-no-image { background: radial-gradient(ellipse at 50% 30%, #1c634c, #0a2923 72%); }
+.nasihat-arrow { position: absolute; z-index: 3; top: 50%; display: grid; width: 44px; height: 44px; place-items: center; padding: 0; transform: translateY(-50%); border: 1px solid rgba(240,209,138,.8); border-radius: 50%; color: #fff4d2; background: rgba(6,34,28,.8); box-shadow: 0 4px 14px rgba(0,0,0,.3); font: 400 25px/1 "DM Sans", sans-serif; cursor: pointer; backdrop-filter: blur(5px); }
+.nasihat-arrow:hover, .nasihat-arrow:focus-visible { color: #102c29; background: #e0bd70; outline: 2px solid #fff4d2; outline-offset: 2px; }
+.nasihat-arrow-prev { left: 14px; }
+.nasihat-arrow-next { right: 14px; }
 .nasihat-label { display: flex; align-items: center; justify-content: space-between; color: #f0d18a; font: 700 10px/1.3 "DM Sans", sans-serif; letter-spacing: .17em; }
 .nasihat-label i { font-style: normal; letter-spacing: .1em; }
 .nasihat-quote { color: #fff9e9; font: 600 clamp(19px, 5.1vw, 25px)/1.38 "Noto Serif", Georgia, serif; text-wrap: pretty; text-shadow: 0 2px 14px rgba(0,0,0,.38); }
@@ -329,7 +334,10 @@ body.home-mode #app { min-height: 0; }
 .nasihat-attribution { display: block; margin-top: 11px; color: #766a54; font-size: 10px; line-height: 1.45; }
 @media (max-width: 380px) {
   .nasihat-cover { min-height: 330px; }
-  .nasihat-cover-copy { padding: 20px 16px 17px; }
+  .nasihat-cover-copy { padding: 20px 57px 17px; }
+  .nasihat-arrow { width: 36px; height: 36px; font-size: 21px; }
+  .nasihat-arrow-prev { left: 10px; }
+  .nasihat-arrow-next { right: 10px; }
   .nasihat-expanded { padding: 17px 14px 14px; }
   .nasihat-card-actions { align-items: flex-start; flex-direction: column; }
 }
