@@ -4,12 +4,31 @@ const navButtons = [...document.querySelectorAll(".nav-item")];
 const telegramApp = window.Telegram?.WebApp;
 const timezone = "Asia/Tashkent";
 const storageKey = `dil-daftari-v1-${telegramApp?.initDataUnsafe?.user?.id || "local"}`;
+const configuredPrayerApi = document.querySelector("meta[name='prayer-api-url']")?.content?.trim().replace(/\/$/, "");
+const prayerApiBase = configuredPrayerApi || window.location.origin;
+const hijriPartsFormatter = new Intl.DateTimeFormat("en-US-u-ca-islamic-umalqura", {
+  timeZone: timezone, year: "numeric", month: "numeric", day: "numeric",
+});
+const hijriLabelFormatter = new Intl.DateTimeFormat("uz-Cyrl-UZ-u-ca-islamic-umalqura", {
+  timeZone: timezone, year: "numeric", month: "long", day: "numeric",
+});
+const hijriMonthLabelFormatter = new Intl.DateTimeFormat("uz-Cyrl-UZ-u-ca-islamic-umalqura", {
+  timeZone: timezone, year: "numeric", month: "long",
+});
+const weekdayFormatter = new Intl.DateTimeFormat("uz-Cyrl-UZ", {
+  timeZone: timezone, weekday: "long",
+});
 
 let lessons = [];
 let pirData;
 let asmaData;
 let state;
 let route = "today";
+let prayerView = "today";
+let prayerMonth = localDay().slice(0, 7);
+let selectedHijriMonth = "";
+let hijriDateShiftDays = 0;
+let prayerMonthCache = {};
 let memoryType = "pirs";
 let selectedPerson = 0;
 let selectedPlace = 0;
@@ -37,10 +56,94 @@ function formatDate() {
   }).format(new Date());
 }
 
+function dateAtTashkentNoon(dateKey) {
+  return new Date(`${dateKey}T07:00:00.000Z`);
+}
+
+function addDays(dateKey, amount) {
+  const date = new Date(`${dateKey}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+function monthOf(dateKey) {
+  return dateKey.slice(0, 7);
+}
+
+function hijriParts(dateKey) {
+  const adjustedDate = dateAtTashkentNoon(addDays(dateKey, hijriDateShiftDays));
+  const values = Object.fromEntries(hijriPartsFormatter.formatToParts(adjustedDate).map((part) => [part.type, part.value]));
+  return {
+    year: Number.parseInt(values.year, 10),
+    month: Number.parseInt(values.month, 10),
+    day: Number.parseInt(values.day, 10),
+  };
+}
+
+function hijriMonthKey(dateKey) {
+  const parts = hijriParts(dateKey);
+  return `${parts.year}-${String(parts.month).padStart(2, "0")}`;
+}
+
+function formatHijriDate(dateKey) {
+  return hijriLabelFormatter.format(dateAtTashkentNoon(addDays(dateKey, hijriDateShiftDays)));
+}
+
+function formatHijriMonth(dateKey) {
+  return hijriMonthLabelFormatter.format(dateAtTashkentNoon(addDays(dateKey, hijriDateShiftDays)));
+}
+
+function applyHijriAnchor(anchor) {
+  if (!anchor?.gregorian || !anchor.year || !anchor.month || !anchor.day) return;
+  for (let shift = -2; shift <= 2; shift += 1) {
+    const parts = hijriPartsFormatter.formatToParts(dateAtTashkentNoon(addDays(anchor.gregorian, shift)));
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    if (Number.parseInt(values.year, 10) === anchor.year
+      && Number.parseInt(values.month, 10) === anchor.month
+      && Number.parseInt(values.day, 10) === anchor.day) {
+      hijriDateShiftDays = shift;
+      return;
+    }
+  }
+}
+
+function hijriMonthOptions() {
+  const options = new Map();
+  const year = Number(localDay().slice(0, 4));
+  const start = `${year}-01-01`;
+  const days = new Date(Date.UTC(year + 1, 0, 1)).getTime() - new Date(Date.UTC(year, 0, 1)).getTime();
+  const count = Math.round(days / 86400000);
+  for (let offset = 0; offset < count; offset += 1) {
+    const dateKey = addDays(start, offset);
+    const key = hijriMonthKey(dateKey);
+    if (!options.has(key)) {
+      options.set(key, {
+        key,
+        date: dateKey,
+        label: formatHijriMonth(dateKey),
+      });
+    }
+  }
+  return [...options.values()];
+}
+
+function datesInHijriMonth(monthKey) {
+  const dates = [];
+  const year = Number(localDay().slice(0, 4));
+  const start = `${year}-01-01`;
+  const days = new Date(Date.UTC(year + 1, 0, 1)).getTime() - new Date(Date.UTC(year, 0, 1)).getTime();
+  const count = Math.round(days / 86400000);
+  for (let offset = 0; offset < count; offset += 1) {
+    const dateKey = addDays(start, offset);
+    if (hijriMonthKey(dateKey) === monthKey) dates.push(dateKey);
+  }
+  return dates;
+}
+
 function emptyState() {
   return {
-    stage: 0,
     daily: null,
+    schedule: {},
     completedStages: [],
     memories: {
       pirs: { quota: 1, completed: [], session: null },
@@ -54,9 +157,22 @@ function loadState() {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (saved && typeof saved === "object") {
       const base = emptyState();
+      const oldDaily = saved.daily;
+      const daily = oldDaily && oldDaily.day
+        ? {
+            day: oldDaily.day,
+            counts: oldDaily.counts && typeof oldDaily.counts === "object"
+              ? oldDaily.counts
+              : oldDaily.stage !== undefined
+                ? { [oldDaily.stage]: Number(oldDaily.count || 0) }
+                : {},
+          }
+        : null;
       return {
         ...base,
         ...saved,
+        daily,
+        schedule: { ...base.schedule, ...(saved.schedule || {}) },
         memories: {
           ...base.memories,
           ...(saved.memories || {}),
@@ -78,10 +194,11 @@ function syncDaily() {
   if (!state.daily || state.daily.day !== day) {
     state.daily = {
       day,
-      stage: state.stage,
-      count: 0,
-      done: state.stage >= lessons.length,
+      counts: {},
     };
+    saveState();
+  } else if (!state.daily.counts || typeof state.daily.counts !== "object") {
+    state.daily.counts = {};
     saveState();
   }
 }
@@ -120,66 +237,218 @@ function pageIntro(label, title, description) {
   </div>`;
 }
 
-function courseProgress() {
-  const completed = state.completedStages.length;
-  const percent = Math.round((completed / Math.max(1, lessons.length)) * 100);
-  return `<div class="course-progress">
-    <div class="progress-meta"><span>Дарслар йўли</span><span>${completed} / ${lessons.length}</span></div>
-    <div class="progress-track"><span style="width:${percent}%"></span></div>
-  </div>`;
-}
-
 function renderCounter(lesson, index, done) {
-  const count = state.daily?.count || 0;
+  const count = Number(state.daily?.counts?.[index] || 0);
+  const reminderTime = state.schedule?.[index] || "";
   const percent = Math.min(100, Math.round((count / lesson.count) * 100));
-  return `<section class="counter-card">
+  return `<article class="daily-lesson-card">
+    <div class="daily-lesson-heading">
+      <span class="guide-num">${String(index + 1).padStart(2, "0")}</span>
+      <div><h2>${escapeHtml(lesson.title)}</h2><small>${lesson.count.toLocaleString("uz-UZ")} марта · ҳар куни</small></div>
+    </div>
+    <label class="reminder-time-row"><span>Кунлик эслатма вақти</span>
+      <input type="time" value="${escapeHtml(reminderTime)}" data-action="reminder-time" data-lesson="${index}" aria-label="${escapeHtml(lesson.title)} эслатма вақти">
+    </label>
+    <section class="counter-card">
     <div class="counter-head">
-      <span class="section-label">Вирд саноғи</span>
+      <span class="section-label">Бугунги саноқ</span>
       <span class="counter-figures"><b>${count.toLocaleString("uz-UZ")}</b> / ${lesson.count.toLocaleString("uz-UZ")}</span>
     </div>
     <div class="ring-wrap">
       <div class="count-ring" style="--progress:${percent}%">
-        <button class="count-button" data-action="count-one" ${done ? "disabled" : ""} aria-label="Бир марта санаш">
+        <button class="count-button" data-action="count-one" data-lesson="${index}" ${done ? "disabled" : ""} aria-label="${escapeHtml(lesson.title)} саноғи">
           <strong>${count.toLocaleString("uz-UZ")}</strong>
           <small>${done ? "ЯКУНЛАНДИ" : "САНОҚ"}</small>
           <span class="tap-hint">${done ? "" : "+1 босинг"}</span>
         </button>
       </div>
     </div>
-    ${done ? `<div class="complete-banner"><span>✦</span><span><strong>Бугунги вирд бажарилди.</strong> Кейинги босқич эртага очилади.</span></div>` : `
+    ${done ? `<div class="complete-banner"><span>✦</span><span><strong>Бугунги дарс бажарилди.</strong> Қолган дарслардан давом этинг.</span></div>` : `
       <div class="counter-actions">
-        <button class="counter-action subtle" data-action="count-minus">−1</button>
-        <button class="counter-action" data-action="count-ten">+10</button>
-        <button class="counter-action" data-action="count-hundred">+100</button>
-        <button class="counter-action subtle" data-action="count-reset">↺</button>
+        <button class="counter-action subtle" data-action="count-minus" data-lesson="${index}">−1</button>
+        <button class="counter-action" data-action="count-ten" data-lesson="${index}">+10</button>
+        <button class="counter-action" data-action="count-hundred" data-lesson="${index}">+100</button>
+        <button class="counter-action subtle" data-action="count-reset" data-lesson="${index}">↺</button>
       </div>`}
-    ${courseProgress()}
-  </section>`;
+    </section>
+    <details class="daily-lesson-details"><summary>Дарс матни ва маъносини очиш</summary><div class="lesson-copy">${textWithBreaks(lesson.content)}</div></details>
+  </article>`;
 }
 
 function renderToday() {
   syncDaily();
   document.getElementById("today-date").textContent = formatDate();
   if (lessons.length === 0) return `<div class="empty-box"><strong>Дарслар топилмади</strong><p>Қўлланма матнини қайта юкланг.</p></div>`;
+  const cards = lessons.map((lesson, index) => renderCounter(lesson, index, Number(state.daily.counts[index] || 0) >= lesson.count)).join("");
+  const configured = Object.values(state.schedule || {}).filter(Boolean).length;
+  const completed = lessons.filter((lesson, index) => Number(state.daily.counts[index] || 0) >= lesson.count).length;
+  const progress = Math.round((completed / lessons.length) * 100);
+  return `<section class="home-hero">
+      <div class="home-night-scene">
+        <span class="hero-star star-one">✦</span><span class="hero-star star-two">·</span><span class="hero-star star-three">✧</span>
+        <div class="home-crescent" aria-hidden="true"></div>
+        <div class="home-arch" aria-hidden="true"><div class="home-arch-window"></div></div>
+        <div class="home-copy">
+          <span class="home-kicker">МАЪНАВИЙ ЙЎЛ ДАФТАРИ</span>
+          <h1>Қалбингизга<br><em>қулоқ тутинг</em></h1>
+          <div class="home-ornament"><span></span><b>✦</b><span></span></div>
+          <p>Ҳар кун — қалбга яқинлашиш<br>учун янги қадам.</p>
+        </div>
+        <svg class="home-open-book" viewBox="0 0 440 150" role="img" aria-label="Очиқ китоб">
+          <defs><linearGradient id="bookPage" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#fff5da"/><stop offset="1" stop-color="#cba766"/></linearGradient><linearGradient id="bookCover" x1="0" x2="1"><stop stop-color="#8b5e29"/><stop offset=".5" stop-color="#e1c17b"/><stop offset="1" stop-color="#79501f"/></linearGradient></defs>
+          <path d="M29 39 Q104 9 216 47 L220 128 Q115 91 32 119 Z" fill="url(#bookCover)" stroke="#f1d58f" stroke-width="3"/>
+          <path d="M411 39 Q336 9 224 47 L220 128 Q325 91 408 119 Z" fill="url(#bookCover)" stroke="#f1d58f" stroke-width="3"/>
+          <path d="M39 38 Q111 16 210 51 L214 115 Q119 84 39 108 Z" fill="url(#bookPage)"/>
+          <path d="M401 38 Q329 16 230 51 L226 115 Q321 84 401 108 Z" fill="url(#bookPage)"/>
+          <path d="M220 48 L220 128" stroke="#6d491d" stroke-width="4"/>
+          <g fill="none" stroke="#9c7742" stroke-width="1.4" opacity=".65"><path d="M63 55 Q126 36 193 59 M58 68 Q126 49 194 72 M54 81 Q124 63 196 84 M251 59 Q314 36 377 55 M247 72 Q315 49 382 68 M244 84 Q316 63 386 81"/><path d="M67 93 Q126 78 196 97 M244 97 Q314 78 373 93"/></g>
+          <path d="M216 128 Q223 141 230 128" fill="none" stroke="#d0a951" stroke-width="4"/>
+        </svg>
+        <div class="home-horizon" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </section>
+    <section class="home-callout">
+      <div class="callout-flourish flourish-left" aria-hidden="true">❧</div><div class="callout-flourish flourish-right" aria-hidden="true">❧</div>
+      <span class="callout-kicker">КУНЛИК МАШҒУЛОТ</span>
+      <h2>Бугунги саҳифа</h2>
+      <div class="home-ornament dark"><span></span><b>◆</b><span></span></div>
+      <p>Ниятни покла, қалбни тингла.</p>
+      <button class="home-start-button" data-action="jump-to-lessons">Бошлаш <span>→</span></button>
+    </section>
+    <section class="home-progress" aria-label="Бугунги дарслар бажарилиши">
+      <div class="progress-label"><span>${completed} / ${lessons.length} дарс бажарилди</span><span>${progress}%</span></div>
+      <div class="home-progress-track"><span style="width:${progress}%"></span></div>
+    </section>
+    <div class="daily-intro">
+      <span class="eyebrow">БУГУН · ${lessons.length} ТА ДАРС</span>
+      <p>Барча дарслар ҳар куни ўқилади. Ҳар бирининг саноғи ва эслатма вақтини алоҳида белгиланг.</p>
+    </div>
+    <div class="reminder-note">Вақт белгиланган дарсларга бот ҳар куни хабар юборади. Вақтсиз қолдирилган дарсларга эслатма келмайди.</div>
+    <div class="daily-lessons" id="daily-lessons">${cards}</div>
+    <section class="paper-card reminder-save-card">
+      <div><span class="section-label">Эслатмалар</span><strong>${configured} та дарсга вақт белгиланган</strong><p>Ўзгаришлар шу қурилмада сақланади. Telegram ботга юбориш учун қуйидаги тугмани босинг.</p></div>
+      <button class="primary-button gold wide" data-action="save-reminders">Вақтларни ботга юбориш</button>
+    </section>`;
+}
 
-  if (state.stage >= lessons.length && state.daily.stage >= lessons.length) {
-    return `${pageIntro("КУНЛИК МАШҒУЛОТ", "Босқичлар якунланди", "Қўлланмани исталган вақтда қайта очиб ўқишингиз мумкин.")}
-      <div class="empty-box"><strong>Тўққиз дарснинг барчаси якунланган</strong><p>Силсила ва исмларни ёдлаш бўлимларидан давом этинг.</p></div>
-      ${courseProgress()}`;
+async function fetchPrayerMonth(monthKey) {
+  if (prayerMonthCache[monthKey]) return prayerMonthCache[monthKey];
+  const [year, month] = monthKey.split("-").map(Number);
+  const response = await fetch(`${prayerApiBase}/api/prayer-times?year=${year}&month=${month}`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Намоз вақтлари юкланмади.");
+  if (!Array.isArray(data.rows) || data.rows.length === 0) throw new Error("Манбада бу ой учун жадвал топилмади.");
+  if (data.hijri_anchor) applyHijriAnchor(data.hijri_anchor);
+  prayerMonthCache[monthKey] = data;
+  return data;
+}
+
+function prayerMonthDates(monthKey) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return Array.from({ length: days }, (_, index) => `${year}-${String(month).padStart(2, "0")}-${String(index + 1).padStart(2, "0")}`);
+}
+
+function addMinutes(time, amount) {
+  const [hour, minute] = time.split(":").map(Number);
+  const total = (hour * 60 + minute + amount) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function renderPrayerShell() {
+  const tabs = [
+    ["today", "Бугун"],
+    ["tomorrow", "Эртага"],
+    ["month", "Ойлик"],
+    ["hijri", "Ойлик (ҳижрий)"],
+  ].map(([key, label]) => `<button class="prayer-tab ${prayerView === key ? "selected" : ""}" data-action="prayer-view" data-view="${key}">${label}</button>`).join("");
+  let selector = "";
+  if (prayerView === "month") {
+    const year = localDay().slice(0, 4);
+    selector = `<label class="prayer-month-picker"><span>Григориан ойи</span><input type="month" min="${year}-01" max="${year}-12" value="${escapeHtml(prayerMonth)}" data-action="prayer-month"></label>`;
+  } else if (prayerView === "hijri") {
+    const options = hijriMonthOptions();
+    const currentKey = hijriMonthKey(localDay());
+    if (!selectedHijriMonth || !options.some((option) => option.key === selectedHijriMonth)) selectedHijriMonth = currentKey;
+    selector = `<label class="prayer-month-picker"><span>Ҳижрий ой</span><select data-action="hijri-month">${options.map((option) => `<option value="${option.key}" ${option.key === selectedHijriMonth ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("")}</select></label>`;
   }
+  return `${pageIntro("ТОШКЕНТ ВАҚТИ", "Намоз вақтлари", "Бугунги, эртанги ва ойлик жадвал. Манба: Islam.uz — Тошкент шаҳри.")}
+    <section class="prayer-panel"><div class="prayer-tabs">${tabs}</div>${selector}
+      <div class="prayer-source-note">Бомдод — саҳарлик тугаши. Шом — ифторлик вақти. Ишроқ қуёш чиққандан тахминан 20 дақиқа кейин ҳисобланади.</div>
+      <div id="prayer-results" class="prayer-results"><div class="loading-state"><div class="spinner"></div><p>Намоз вақтлари юкланмоқда…</p></div></div>
+    </section>`;
+}
 
-  const index = state.daily.done ? state.daily.stage : state.stage;
-  const lesson = lessons[index];
-  if (!lesson) return `${pageIntro("КУНЛИК МАШҒУЛОТ", "Дарс йўқ", "Қўлланмадан мавжуд дарсларни кўринг.")}`;
-  const done = Boolean(state.daily.done);
-  return `${pageIntro(`КУН ${index + 1} · ${lessons.length} БОСҚИЧ`, "Кунлик вирд", "Матнни ўқинг, маъноси устида тафаккур қилинг ва саноқни юритинг.")}
-    <article class="paper-card today-card">
-      <div class="lesson-topline"><span class="section-label">Бугунги дарс</span><span class="step-pill">${String(index + 1).padStart(2, "0")} / ${lessons.length}</span></div>
-      <h2 class="lesson-title">${escapeHtml(lesson.title)}</h2>
-      <div class="lesson-copy">${textWithBreaks(lesson.content)}</div>
-      <div class="reflection-note"><span>✦</span><div>Оят ва изоҳларни шошилмай ўқинг. Маъносини англаб, сўнг вирд саноғини бошланг.</div></div>
-    </article>
-    ${renderCounter(lesson, index, done)}`;
+function prayerDisplayRows(dateKeys, rowsByDate, hijriMode = false) {
+  const visible = dateKeys.map((dateKey) => {
+    const row = rowsByDate[dateKey];
+    if (!row) return null;
+    const next = rowsByDate[addDays(dateKey, 1)];
+    const hijriDate = formatHijriDate(dateKey);
+    const gregorianDate = new Intl.DateTimeFormat("uz-Cyrl-UZ", {
+      timeZone: timezone, day: "numeric", month: "short",
+    }).format(dateAtTashkentNoon(dateKey));
+    const dateLabel = hijriMode
+      ? `<strong>${escapeHtml(hijriDate)}</strong><small>${escapeHtml(gregorianDate)}</small>`
+      : `<strong>${escapeHtml(gregorianDate)}</strong>`;
+    const tahajjud = next ? `${row.isha}–${next.fajr}` : "Хуфтондан бомдодгача";
+    return `<tr class="${dateKey === localDay() ? "prayer-today-row" : ""}">
+      <td class="prayer-date-cell">${dateLabel}</td>
+      <td>${escapeHtml(weekdayFormatter.format(dateAtTashkentNoon(dateKey)))}</td>
+      <td>${escapeHtml(row.fajr)}</td><td>${escapeHtml(row.sunrise)}</td><td>${escapeHtml(addMinutes(row.sunrise, 20))}</td>
+      <td>${escapeHtml(row.dhuhr)}</td><td>${escapeHtml(row.asr)}</td><td>${escapeHtml(row.maghrib)}</td><td>${escapeHtml(row.isha)}</td><td>${escapeHtml(tahajjud)}</td>
+    </tr>`;
+  }).filter(Boolean);
+  if (!visible.length) return `<div class="empty-box"><strong>Сана топилмади</strong><p>Бу ой учун Islam.uz жадвалида маълумот йўқ.</p></div>`;
+  return `<div class="prayer-table-scroll"><table class="prayer-table"><thead><tr>
+    <th>Сана</th><th>Ҳафта куни</th><th>Бомдод<br><small>(саҳарлик тугаши)</small></th><th>Қуёш</th><th>Ишроқ<br><small>(+20 дақ.)</small></th>
+    <th>Пешин</th><th>Аср</th><th>Шом<br><small>(ифторлик)</small></th><th>Хуфтон</th><th>Таҳажжуд<br><small>(хуфтон–кейинги бомдод)</small></th>
+  </tr></thead><tbody>${visible.join("")}</tbody></table></div>`;
+}
+
+async function loadPrayerView() {
+  const resultNode = document.getElementById("prayer-results");
+  if (!resultNode) return;
+  const year = Number(localDay().slice(0, 4));
+  try {
+    const anchorMonth = prayerView === "month" ? prayerMonth : monthOf(localDay());
+    const anchorData = await fetchPrayerMonth(anchorMonth);
+    if (route !== "prayers") return;
+
+    if (prayerView === "hijri") {
+      const options = hijriMonthOptions();
+      if (!selectedHijriMonth || !options.some((option) => option.key === selectedHijriMonth)) selectedHijriMonth = hijriMonthKey(localDay());
+      app.innerHTML = renderPrayerShell();
+    }
+
+    let dateKeys;
+    if (prayerView === "today") dateKeys = [localDay()];
+    else if (prayerView === "tomorrow") dateKeys = [addDays(localDay(), 1)];
+    else if (prayerView === "month") dateKeys = prayerMonthDates(prayerMonth);
+    else dateKeys = datesInHijriMonth(selectedHijriMonth);
+
+    if (!dateKeys.length) throw new Error("Танланган ҳижрий ой жорий йил жадвалида топилмади.");
+    const datesToLoad = [...dateKeys, addDays(dateKeys[dateKeys.length - 1], 1)];
+    const monthKeys = [...new Set(datesToLoad
+      .filter((dateKey) => Number(dateKey.slice(0, 4)) === year)
+      .map(monthOf))];
+    const months = await Promise.all(monthKeys.map(fetchPrayerMonth));
+    const rowsByDate = {};
+    for (const month of [anchorData, ...months]) {
+      for (const row of month.rows) rowsByDate[row.date] = row;
+    }
+    if (route !== "prayers") return;
+    const table = prayerDisplayRows(dateKeys, rowsByDate, prayerView === "hijri");
+    const sourceMonth = prayerView === "month" ? prayerMonth : monthOf(dateKeys[0]);
+    const sourceUrl = `https://islam.uz/vremyanamazov/27/${Number(sourceMonth.slice(5, 7))}`;
+    const sourceLabel = prayerView === "today" ? "Бугунги Islam.uz жадвали" : "Islam.uz манба саҳифаси";
+    const content = document.getElementById("prayer-results");
+    if (content) content.innerHTML = `${table}<p class="prayer-attribution">${escapeHtml(sourceLabel)}: <a href="${sourceUrl}" target="_blank" rel="noopener">islam.uz</a> · Тошкент вақти (UTC+5). Ишроқ тахминий; таҳажжуд оралиғи шу кунги хуфтондан кейинги бомдодгача.</p>`;
+  } catch (error) {
+    if (route !== "prayers") return;
+    const content = document.getElementById("prayer-results");
+    if (content) content.innerHTML = `<div class="empty-box prayer-error"><strong>Намоз вақтлари ҳозир очилмади</strong><p>${escapeHtml(error.message)} API манзилини текширинг ёки Islam.uz манбасини очинг.</p><a href="https://islam.uz/prayertimes" target="_blank" rel="noopener">Islam.uz — намоз вақтлари</a></div>`;
+  }
 }
 
 function memoryData(type) {
@@ -481,19 +750,24 @@ function renderGuide() {
       <article class="paper-card guide-detail"><div class="lesson-topline"><span class="section-label">${String(selectedLesson + 1).padStart(2, "0")}</span><span class="step-pill">${lesson.count} марта</span></div><h2 class="lesson-title">${escapeHtml(lesson.title)}</h2><div class="lesson-copy">${textWithBreaks(lesson.content)}</div>
       <div class="button-row"><button class="primary-button" data-action="go-today">Бугунги вирдга қайтиш</button><button class="secondary-button" data-action="guide-back">Рўйхат</button></div></article>`;
   }
-  const rows = lessons.map((lesson, index) => `<button class="guide-row" data-action="open-lesson" data-lesson="${index}"><span class="guide-num">${String(index + 1).padStart(2, "0")}</span><span><strong>${escapeHtml(lesson.title)}</strong><small>${lesson.count.toLocaleString("uz-UZ")} марта · ${state.completedStages.includes(index) ? "якунланган" : "қўлланма"}</small></span></button>`).join("");
-  return `${pageIntro("ҚЎЛЛАНМА", "Дарслар кетма-кетлиги", "Исталган босқични очиб, матнини ўқинг.")}<div class="guide-list">${rows}</div>
+  const rows = lessons.map((lesson, index) => `<button class="guide-row" data-action="open-lesson" data-lesson="${index}"><span class="guide-num">${String(index + 1).padStart(2, "0")}</span><span><strong>${escapeHtml(lesson.title)}</strong><small>${lesson.count.toLocaleString("uz-UZ")} марта · ${Number(state.daily?.counts?.[index] || 0) >= lesson.count ? "бугун бажарилди" : "ҳар куни ўқилади"}</small></span></button>`).join("");
+  return `${pageIntro("ҚЎЛЛАНМА", "9 та кунлик дарс", "Барча дарслар ҳар куни ўқилади. Исталганини очиб, матнини ўқинг.")}<div class="guide-list">${rows}</div>
     <div class="source-box">Вирд матни берилган қўлланма асосида киритилган. Қўшимча изоҳлар кейин босқичма-босқич қўшилади.</div>`;
 }
 
 function render(keepScroll = false) {
   const previousScroll = window.scrollY;
+  document.body.classList.toggle("home-mode", route === "today");
   if (leafletMap) {
     leafletMap.remove();
     leafletMap = null;
   }
   updateNav();
   if (route === "today") app.innerHTML = renderToday();
+  else if (route === "prayers") {
+    app.innerHTML = renderPrayerShell();
+    loadPrayerView();
+  }
   else if (route === "memory") app.innerHTML = renderMemory();
   else if (route === "places") app.innerHTML = renderPlaces();
   else app.innerHTML = renderGuide();
@@ -563,29 +837,55 @@ function setQuota(value) {
   render(true);
 }
 
+function sendReminderTimes() {
+  const times = Object.fromEntries(
+    Object.entries(state.schedule || {}).filter(([index, value]) => Number.isInteger(Number(index)) && value),
+  );
+  const payload = JSON.stringify({ type: "reminders", times });
+  saveState();
+  if (telegramApp && typeof telegramApp.sendData === "function") {
+    try {
+      telegramApp.sendData(payload);
+      showToast("Вақтлар Telegram ботига юборилди.");
+      return;
+    } catch (_) {
+      // The method works only when the Mini App was opened from a reply-keyboard button.
+    }
+  }
+  showToast("Ботга юбориш учун иловадаги «Вирд вақтларини белгилаш» тугмаси орқали очинг.");
+}
+
 app.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (!button) return;
   const action = button.dataset.action;
 
-  if (action === "count-one" || action === "count-ten" || action === "count-hundred" || action === "count-minus") {
-    if (state.daily.done) return;
+  if (action === "prayer-view") {
+    prayerView = button.dataset.view;
+    render();
+  } else if (action === "jump-to-lessons") {
+    document.getElementById("daily-lessons")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else if (action === "count-one" || action === "count-ten" || action === "count-hundred" || action === "count-minus") {
+    const index = Number(button.dataset.lesson);
+    const lesson = lessons[index];
+    if (!lesson) return;
     const amount = action === "count-one" ? 1 : action === "count-ten" ? 10 : action === "count-hundred" ? 100 : -1;
-    const lesson = lessons[state.stage];
-    state.daily.count = Math.max(0, Math.min(lesson.count, state.daily.count + amount));
-    if (state.daily.count >= lesson.count) {
-      state.daily.done = true;
-      if (!state.completedStages.includes(state.stage)) state.completedStages.push(state.stage);
-      state.stage += 1;
-      showToast("Бугунги вирд бажарилди.");
+    const previous = Number(state.daily.counts[index] || 0);
+    const count = Math.max(0, Math.min(lesson.count, previous + amount));
+    state.daily.counts[index] = count;
+    if (count >= lesson.count && previous < lesson.count) {
+      showToast(`${lesson.title}: бугунги саноқ бажарилди.`);
     }
     saveState();
     render(true);
   } else if (action === "count-reset") {
-    if (state.daily.done) return;
-    state.daily.count = 0;
+    const index = Number(button.dataset.lesson);
+    if (!lessons[index]) return;
+    state.daily.counts[index] = 0;
     saveState();
     render(true);
+  } else if (action === "save-reminders") {
+    sendReminderTimes();
   } else if (action === "memory-type") {
     memoryType = button.dataset.type;
     render();
@@ -650,6 +950,21 @@ app.addEventListener("click", (event) => {
 
 app.addEventListener("change", (event) => {
   if (event.target.matches("[data-action='quota']")) setQuota(event.target.value);
+  else if (event.target.matches("[data-action='prayer-month']")) {
+    prayerMonth = event.target.value || localDay().slice(0, 7);
+    render();
+  } else if (event.target.matches("[data-action='hijri-month']")) {
+    selectedHijriMonth = event.target.value;
+    render();
+  }
+  else if (event.target.matches("[data-action='reminder-time']")) {
+    const index = Number(event.target.dataset.lesson);
+    if (!lessons[index]) return;
+    if (event.target.value) state.schedule[index] = event.target.value;
+    else delete state.schedule[index];
+    saveState();
+    render(true);
+  }
 });
 
 navButtons.forEach((button) => {

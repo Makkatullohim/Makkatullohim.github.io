@@ -157,12 +157,126 @@ button { -webkit-tap-highlight-color: transparent; }
 .guide-detail { padding: 20px; }
 .guide-detail .lesson-copy { font-size: 14px; }
 
-.bottom-nav { position: fixed; z-index: 500; bottom: 0; left: 50%; display: grid; width: min(100%, 760px); grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 8px 13px calc(8px + var(--safe-bottom)); border-top: 1px solid rgba(245,240,227,.12); background: rgba(13, 39, 36, .94); backdrop-filter: blur(18px); transform: translateX(-50%); }
+.bottom-nav { position: fixed; z-index: 500; bottom: 0; left: 50%; display: grid; width: min(100%, 760px); grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 8px 13px calc(8px + var(--safe-bottom)); border-top: 1px solid rgba(245,240,227,.12); background: rgba(13, 39, 36, .94); backdrop-filter: blur(18px); transform: translateX(-50%); }
 .nav-item { display: flex; min-height: 54px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 12px; color: #8fa397; background: transparent; font-size: 9px; font-weight: 600; cursor: pointer; }
 .nav-item.active { color: var(--gold); background: rgba(211,168,98,.09); }
 .nav-icon { font-size: 18px; line-height: 1.1; }
 .toast { position: fixed; z-index: 1000; right: 20px; bottom: calc(82px + var(--safe-bottom)); left: 20px; max-width: 400px; margin: 0 auto; padding: 11px 14px; border-radius: 12px; color: var(--cream); background: #204a3e; box-shadow: 0 8px 25px rgba(0,0,0,.24); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s; }
 .toast.show { opacity: 1; transform: translateY(0); }
+
+.reminder-note { margin: 0 2px 14px; padding: 12px 14px; border: 1px solid rgba(211,168,98,.28); border-radius: 14px; color: #e3dcc6; background: rgba(211,168,98,.09); font-size: 12px; line-height: 1.55; }
+.daily-lessons { display: grid; gap: 13px; }
+.daily-lesson-card { overflow: hidden; padding: 16px; border: 1px solid rgba(253,249,237,.72); border-radius: 21px; background: var(--paper); box-shadow: var(--shadow); }
+.daily-lesson-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
+.daily-lesson-heading .guide-num { width: 36px; height: 36px; font-size: 12px; }
+.daily-lesson-heading h2 { margin: 0; color: var(--ink); font: 600 19px/1.3 "Noto Serif", Georgia, serif; }
+.daily-lesson-heading small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+.reminder-time-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: rgba(255,255,255,.55); font-size: 12px; font-weight: 600; }
+.reminder-time-row input { min-height: 38px; padding: 6px 8px; border: 1px solid rgba(22,55,48,.18); border-radius: 9px; color: var(--forest); background: #fffdf6; font-variant-numeric: tabular-nums; }
+.daily-lesson-card .counter-card { margin-top: 0; padding: 14px; border-radius: 16px; }
+.daily-lesson-card .count-ring { width: 112px; height: 112px; }
+.daily-lesson-card .count-button { width: 91px; height: 91px; }
+.daily-lesson-card .count-button strong { font-size: 21px; }
+.daily-lesson-card .counter-actions { gap: 7px; }
+.daily-lesson-details { margin-top: 12px; border-top: 1px solid var(--line); color: var(--ink); }
+.daily-lesson-details summary { padding: 12px 2px 2px; color: var(--forest-3); font-size: 12px; font-weight: 700; cursor: pointer; }
+.daily-lesson-details .lesson-copy { padding: 10px 2px 3px; font-size: 13px; line-height: 1.75; }
+.reminder-save-card { display: grid; gap: 13px; margin-top: 14px; padding: 18px; }
+.reminder-save-card strong { display: block; margin-top: 6px; color: var(--ink); font: 600 18px/1.3 "Noto Serif", Georgia, serif; }
+.reminder-save-card p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+.prayer-panel { overflow: hidden; padding: 12px; border: 1px solid rgba(244,239,223,.18); border-radius: 20px; background: rgba(255,255,255,.045); }
+.prayer-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.prayer-tab { min-height: 42px; padding: 8px 9px; border: 1px solid rgba(244,239,223,.13); border-radius: 11px; color: #c5d0c3; background: rgba(255,255,255,.04); font-size: 11px; font-weight: 700; cursor: pointer; }
+.prayer-tab.selected { border-color: rgba(211,168,98,.65); color: #302a1c; background: var(--gold); }
+.prayer-month-picker { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0; padding: 10px 12px; border: 1px solid rgba(244,239,223,.13); border-radius: 12px; color: #d6dfd1; background: rgba(255,255,255,.04); font-size: 12px; }
+.prayer-month-picker input, .prayer-month-picker select { max-width: 62%; min-height: 38px; padding: 6px 8px; border: 1px solid rgba(244,239,223,.18); border-radius: 9px; color: var(--cream); background: #183b35; font: inherit; }
+.prayer-source-note { margin: 10px 2px; color: #aebdaf; font-size: 11px; line-height: 1.55; }
+.prayer-table-scroll { overflow: auto; border: 1px solid rgba(244,239,223,.14); border-radius: 13px; background: var(--paper); -webkit-overflow-scrolling: touch; }
+.prayer-table { width: 100%; min-width: 1250px; border-collapse: separate; border-spacing: 0; color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums; }
+.prayer-table th, .prayer-table td { padding: 10px 9px; border-right: 1px solid rgba(22,55,48,.1); border-bottom: 1px solid rgba(22,55,48,.1); text-align: center; white-space: nowrap; }
+.prayer-table th { position: sticky; top: 0; z-index: 1; color: #f4efdf; background: var(--forest-2); font-size: 10px; line-height: 1.35; }
+.prayer-table th small { color: #c4ceb9; font-size: 9px; font-weight: 500; }
+.prayer-table tr:last-child td { border-bottom: 0; }
+.prayer-table td:last-child, .prayer-table th:last-child { border-right: 0; }
+.prayer-table tbody tr:nth-child(even) { background: rgba(22,55,48,.035); }
+.prayer-table tbody tr.prayer-today-row { background: rgba(211,168,98,.2); }
+.prayer-date-cell strong, .prayer-date-cell small { display: block; }
+.prayer-date-cell small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.prayer-attribution { margin: 10px 3px 2px; color: #aebdaf; font-size: 10px; line-height: 1.5; }
+.prayer-attribution a, .prayer-error a { color: #e5c783; text-decoration: underline; text-underline-offset: 2px; }
+.prayer-error { margin-top: 10px; }
+
+body.home-mode {
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(30,93,72,.42), transparent 28rem),
+    radial-gradient(ellipse at 82% 44%, rgba(211,168,98,.09), transparent 25rem),
+    #061d19;
+}
+body.home-mode .app-shell { padding-right: 16px; padding-left: 16px; }
+body.home-mode .topbar { position: relative; justify-content: center; gap: 9px; padding-top: max(17px, env(safe-area-inset-top)); padding-bottom: 15px; }
+body.home-mode .brand-mark { width: 39px; height: 39px; }
+body.home-mode .brand-mark svg { width: 39px; height: 39px; }
+body.home-mode .brand-copy { align-items: flex-start; }
+body.home-mode .brand-copy strong { color: #f5e9c6; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; }
+body.home-mode .brand-copy .eyebrow { color: #cbb47b; font-size: 8px; }
+body.home-mode .date-chip { position: absolute; right: 0; padding: 7px 9px; font-size: 9px; }
+body.home-mode #app { min-height: 0; }
+.home-hero { position: relative; overflow: hidden; min-height: 470px; border: 1px solid rgba(218,187,122,.28); border-radius: 24px; background: #06251f; box-shadow: 0 20px 55px rgba(0,0,0,.28); }
+.home-night-scene { position: relative; min-height: 470px; overflow: hidden; background:
+  radial-gradient(ellipse at 50% 78%, rgba(47,112,82,.52), transparent 38%),
+  radial-gradient(ellipse at 82% 18%, rgba(17,88,74,.28), transparent 27%),
+  linear-gradient(180deg, #061914 0%, #06241e 58%, #102f27 100%); }
+.home-night-scene::before { position: absolute; inset: 0; content: ""; opacity: .45; background-image: radial-gradient(1px 1px at 8% 17%, #fff4ca 80%, transparent), radial-gradient(1.4px 1.4px at 31% 9%, #e5cc8a 80%, transparent), radial-gradient(1px 1px at 68% 11%, #fff4d6 80%, transparent), radial-gradient(1px 1px at 91% 42%, #fff4d6 80%, transparent), radial-gradient(1.2px 1.2px at 75% 57%, #d8bd7e 80%, transparent), radial-gradient(1px 1px at 17% 48%, #fff4d6 80%, transparent); }
+.home-arch { position: absolute; top: 37px; left: -44px; width: 132px; height: 318px; border: 5px solid rgba(199,151,72,.63); border-bottom: 0; border-radius: 70px 70px 0 0; box-shadow: inset 0 0 0 2px rgba(249,216,146,.16), 7px 0 24px rgba(228,172,78,.1); transform: rotate(-2deg); }
+.home-arch::after { position: absolute; right: 11px; bottom: 0; left: 11px; height: 66%; border: 1px solid rgba(236,195,112,.3); border-bottom: 0; border-radius: 55px 55px 0 0; content: ""; }
+.home-arch-window { position: absolute; right: 23px; bottom: 0; left: 23px; height: 57%; border: 1px solid rgba(212,167,84,.45); border-bottom: 0; border-radius: 45px 45px 0 0; background: linear-gradient(180deg, transparent, rgba(8,36,29,.6)); }
+.home-crescent { position: absolute; top: 42px; right: 37px; width: 76px; height: 76px; border-radius: 50%; background: #f8df99; box-shadow: 0 0 18px rgba(248,223,153,.38), 0 0 46px rgba(232,187,94,.22); }
+.home-crescent::after { position: absolute; top: -11px; left: 23px; width: 70px; height: 72px; border-radius: 50%; background: #08231d; content: ""; }
+.hero-star { position: absolute; color: #f1d897; text-shadow: 0 0 9px rgba(255,231,157,.8); }
+.star-one { top: 40px; left: 27%; font-size: 15px; }
+.star-two { top: 128px; right: 25%; font-size: 30px; }
+.star-three { top: 227px; left: 19%; font-size: 13px; }
+.home-copy { position: relative; z-index: 2; padding: 48px 18px 0; text-align: center; }
+.home-kicker { color: #d8bc79; font-size: 9px; font-weight: 700; letter-spacing: .22em; }
+.home-copy h1 { margin: 21px 0 8px; color: #f4eddb; font: 500 clamp(33px, 9vw, 49px)/1.1 "Noto Serif", Georgia, serif; letter-spacing: -.045em; text-shadow: 0 3px 18px rgba(0,0,0,.34); }
+.home-copy h1 em { color: #e4be69; font-style: italic; }
+.home-ornament { display: flex; width: min(245px, 70%); align-items: center; gap: 10px; margin: 12px auto 9px; color: #e3bf6b; }
+.home-ornament span { height: 1px; flex: 1; background: linear-gradient(90deg, transparent, currentColor); }
+.home-ornament span:last-child { transform: scaleX(-1); }
+.home-ornament b { font-size: 11px; font-weight: 400; }
+.home-copy p { margin: 0; color: #e4e0d2; font: italic 15px/1.55 "Noto Serif", Georgia, serif; }
+.home-open-book { position: absolute; z-index: 2; right: 3%; bottom: 22px; left: 3%; width: 94%; height: auto; filter: drop-shadow(0 12px 16px rgba(0,0,0,.42)); }
+.home-horizon { position: absolute; right: -5%; bottom: 0; left: -5%; height: 79px; overflow: hidden; background: linear-gradient(180deg, transparent, rgba(6,24,20,.88)); }
+.home-horizon::before, .home-horizon::after { position: absolute; right: -4%; bottom: 20px; left: -4%; height: 54px; border-radius: 50% 50% 0 0; background: #0b2922; content: ""; }
+.home-horizon::after { right: 18%; bottom: 11px; left: 27%; height: 34px; background: #12392b; }
+.home-horizon i { position: absolute; z-index: 1; bottom: 37px; width: 9px; height: 22px; background: #091c18; }
+.home-horizon i:nth-child(1) { left: 46%; height: 32px; }
+.home-horizon i:nth-child(2) { left: 52%; height: 24px; }
+.home-horizon i:nth-child(3) { left: 57%; height: 29px; }
+.home-callout { position: relative; z-index: 3; overflow: hidden; margin: -4px 5px 0; padding: 27px 18px 25px; border: 2px solid #d0a54f; border-radius: 26px; color: #12372c; background: radial-gradient(ellipse at center, #fff8e9 0%, #f2e4c6 72%, #dfc18a 100%); box-shadow: 0 8px 28px rgba(0,0,0,.28), inset 0 0 0 3px rgba(255,255,255,.42), 0 0 20px rgba(217,174,92,.17); text-align: center; }
+.home-callout::before { position: absolute; inset: 7px; border: 1px solid rgba(156,110,41,.38); border-radius: 20px; content: ""; pointer-events: none; }
+.callout-kicker { position: relative; color: #9d7434; font-size: 9px; font-weight: 700; letter-spacing: .18em; }
+.home-callout h2 { position: relative; margin: 6px 0 0; color: #10372a; font: 600 clamp(27px, 7vw, 35px)/1.2 "Noto Serif", Georgia, serif; }
+.home-ornament.dark { color: #ac813d; margin-top: 9px; margin-bottom: 8px; }
+.home-callout p { position: relative; margin: 0 0 16px; color: #1a3e31; font: italic 15px/1.45 "Noto Serif", Georgia, serif; }
+.home-start-button { position: relative; display: inline-flex; min-width: 205px; min-height: 54px; align-items: center; justify-content: center; gap: 13px; padding: 10px 24px; border: 2px solid #d9b767; border-radius: 999px; color: #f8edcf; background: linear-gradient(135deg, #0b3329, #06251f); box-shadow: 0 4px 15px rgba(10,47,36,.27), inset 0 0 0 1px rgba(255,255,255,.09); font: 600 21px "Noto Serif", Georgia, serif; cursor: pointer; }
+.home-start-button span { color: #e7c46f; font: 700 25px "DM Sans", sans-serif; transition: transform .15s ease; }
+.home-start-button:hover span { transform: translateX(4px); }
+.callout-flourish { position: absolute; top: 43%; color: rgba(159,116,51,.48); font: 50px/1 "Noto Serif", serif; }
+.flourish-left { left: 7px; transform: rotate(-45deg); }
+.flourish-right { right: 7px; transform: scaleX(-1) rotate(-45deg); }
+.home-progress { margin: 17px 7px 20px; color: #eadcb8; }
+.progress-label { display: flex; justify-content: space-between; gap: 12px; font: 500 12px "Noto Serif", Georgia, serif; }
+.home-progress-track { height: 9px; margin-top: 8px; padding: 1px; overflow: hidden; border: 1px solid rgba(220,190,126,.72); border-radius: 99px; background: rgba(255,255,255,.04); }
+.home-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #e4bb65, #fff0b8); box-shadow: 0 0 10px rgba(255,218,126,.75); transition: width .3s ease; }
+.daily-intro { margin: 19px 3px 11px; color: #f4efdf; }
+.daily-intro .eyebrow { color: #dfbb6a; }
+.daily-intro p { margin: 6px 0 0; color: #b9c7bb; font-size: 12px; line-height: 1.5; }
+.home-mode .bottom-nav { border-top-color: rgba(205,180,121,.26); background: rgba(4,27,22,.96); box-shadow: 0 -8px 25px rgba(0,0,0,.18); }
+.home-mode .nav-item.active { color: #f0cd79; background: rgba(211,168,98,.1); }
+.home-mode .nav-icon { color: #e8cc85; }
+.daily-lessons { scroll-margin-top: 16px; }
 
 @media (min-width: 650px) {
   .app-shell { padding-right: 28px; padding-left: 28px; }
