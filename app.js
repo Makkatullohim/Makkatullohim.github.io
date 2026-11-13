@@ -749,24 +749,42 @@ function addMap() {
     }).addTo(leafletMap);
   }
 
+  const formatPirRanges = (numbers) => {
+    const sorted = [...new Set(numbers)].sort((a, b) => a - b);
+    const ranges = [];
+    for (const number of sorted) {
+      const last = ranges[ranges.length - 1];
+      if (last && number === last[1] + 1) last[1] = number;
+      else ranges.push([number, number]);
+    }
+    return ranges.map(([start, end]) => start === end ? `${start}` : `${start}–${end}`).join(", ");
+  };
   const markerGroup = window.L.markerClusterGroup
     ? L.markerClusterGroup({
         maxClusterRadius: 28,
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: true,
         zoomToBoundsOnClick: true,
-        iconCreateFunction: (cluster) => L.divIcon({
-          className: "pir-map-cluster-host",
-          html: `<span class="pir-map-cluster">${cluster.getChildCount()}</span>`,
-          iconSize: [38, 38],
-          iconAnchor: [19, 19],
-        }),
+        iconCreateFunction: (cluster) => {
+          const numbers = cluster.getAllChildMarkers()
+            .map((marker) => marker.options.pirNumber)
+            .filter(Number.isFinite);
+          const label = formatPirRanges(numbers) || `${cluster.getChildCount()}`;
+          const width = Math.max(42, Math.min(132, 22 + label.length * 7));
+          return L.divIcon({
+            className: "pir-map-cluster-host",
+            html: `<span class="pir-map-cluster" title="Пирлар: ${label}">${label}</span>`,
+            iconSize: [width, 42],
+            iconAnchor: [width / 2, 21],
+          });
+        },
       })
     : null;
   const bounds = [];
   routePoints.forEach(({ person, place }, index) => {
     const isSelected = selectedPerson === index;
     const marker = L.marker([place.lat, place.lon], {
+      pirNumber: person.number,
       icon: L.divIcon({
         className: `pir-map-marker-host${isSelected ? " selected" : ""}`,
         html: `<span class="pir-map-number">${person.number}</span>`,
