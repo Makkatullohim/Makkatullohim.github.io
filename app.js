@@ -700,14 +700,14 @@ function renderPlaces() {
   document.getElementById("today-date").textContent = formatDate();
   const selected = selectedPerson === 40 ? pirData.continuation : pirData.chain[selectedPerson];
   const places = selected?.locations || [];
-  return `${pageIntro("СИЛСИЛА ХАРИТАСИ", "Одамлар ва жойлар", "Номни танланг — боғлиқ шаҳар ва ҳудудлар харитада очилади.")}
-    <div class="chain-summary"><div><strong>Ҳолидия–Нақшбандия силсиласи</strong><br><span>40 ҳалқа ва кейинги давом алоҳида</span></div><span class="chain-count">40 + 1</span></div>
+  return `${pageIntro("СИЛСИЛА ХАРИТАСИ", "40 пирнинг кетма-кетлиги", "Харитада рақамни босинг ёки пастдаги рўйхатдан пирни танланг.")}
+    <div class="chain-summary"><div><strong>Ҳолидия–Нақшбандия силсиласи</strong><br><span>Устоз-шогирд кетма-кетлиги: 1 дан 40 гача</span></div><span class="chain-count">1 → 40</span></div>
     <section class="map-card">
-      <div class="map-top"><strong>${escapeHtml(selected?.name || "Жойни танланг")}</strong><span>${places.length} нуқта</span></div>
+      <div class="map-top"><strong>40 пир — кетма-кет харита</strong><span>1–40</span></div>
       <div id="map" role="application" aria-label="Силсила жойлари харитаси"></div>
-      <div class="map-selected"><h3>${escapeHtml(selected?.name || "")}</h3><div class="location-pills">${places.map((place, index) => `<button class="location-pill" data-action="select-place" data-place="${index}">${escapeHtml(place.label)}</button>`).join("")}</div>
+      <div class="map-selected"><h3>${selected ? `${selected.number || 41}. ${escapeHtml(selected.name)}` : "Пирни танланг"}</h3><div class="location-pills">${places.map((place, index) => `<button class="location-pill" data-action="select-place" data-place="${index}">${escapeHtml(place.label)}</button>`).join("")}</div>
       <div class="button-row"><a class="secondary-button" href="https://www.openstreetmap.org/?mlat=${places[selectedPlace]?.lat || places[0]?.lat || 39}&mlon=${places[selectedPlace]?.lon || places[0]?.lon || 65}#map=5/${places[selectedPlace]?.lat || places[0]?.lat || 39}/${places[selectedPlace]?.lon || places[0]?.lon || 65}" target="_blank" rel="noopener">Харитани катта очиш ↗</a></div></div>
-      <div class="map-note">${escapeHtml(pirData.source_note)}</div>
+      <div class="map-note">Чизиқ силсиладаги устоз-шогирд тартибини кўрсатади, аниқ сафар йўлини эмас. Ҳар бир рақам пир учун берилган асосий тахминий жойга қўйилган; бошқа жойлари пастдаги рўйхатда бор. ${escapeHtml(pirData.source_note)}</div>
     </section>
     <div class="person-list">${renderPersonList()}</div>
     <div class="source-box"><strong>Манбалар</strong><br>${pirData.sources.map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.label)}</a>`).join(" · ")}<br><br>41-нуқта силсиладаги 40 ҳалқага қўшилмаган; алоҳида давом сифатида берилган.</div>`;
@@ -716,28 +716,75 @@ function renderPlaces() {
 function addMap() {
   const mapNode = document.getElementById("map");
   if (!mapNode || !window.L) return;
-  const selected = selectedPerson === 40 ? pirData.continuation : pirData.chain[selectedPerson];
-  const places = selected?.locations || [];
-  leafletMap = L.map(mapNode, { zoomControl: false, scrollWheelZoom: false }).setView([39, 63], 3);
+  const chain = pirData.chain || [];
+  const routePoints = chain
+    .map((person) => ({ person, place: person.locations?.[0] }))
+    .filter((item) => item.place && Number.isFinite(item.place.lat) && Number.isFinite(item.place.lon));
+  leafletMap = L.map(mapNode, { zoomControl: false, scrollWheelZoom: false, preferCanvas: true }).setView([39, 63], 3);
   L.control.zoom({ position: "bottomright" }).addTo(leafletMap);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(leafletMap);
-  const bounds = [];
-  places.forEach((place, index) => {
-    const marker = L.circleMarker([place.lat, place.lon], {
-      radius: index === selectedPlace ? 9 : 7,
-      color: "#102c29",
-      weight: 2,
-      fillColor: index === selectedPlace ? "#d3a862" : "#4f8067",
-      fillOpacity: 0.95,
+
+  const mapKey = document.querySelector("meta[name='maptiler-api-key']")?.content?.trim();
+  if (mapKey && window.L.maptiler?.maptilerLayer) {
+    L.maptiler.maptilerLayer({
+      apiKey: mapKey,
+      style: L.maptiler.MapStyle.STREETS,
+      language: L.maptiler.Language.RUSSIAN,
     }).addTo(leafletMap);
-    marker.bindPopup(`<strong>${escapeHtml(selected.name)}</strong><br>${escapeHtml(place.label)}<br><small>Тахминий шаҳар/ҳудуд нуқтаси</small>`);
+  } else {
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(leafletMap);
+  }
+
+  const routeCoords = routePoints.map(({ place }) => [place.lat, place.lon]);
+  if (routeCoords.length > 1) {
+    L.polyline(routeCoords, {
+      color: "#bd9554",
+      weight: 3,
+      opacity: 0.88,
+      dashArray: "8 8",
+      lineCap: "round",
+      lineJoin: "round",
+    }).addTo(leafletMap);
+  }
+
+  const markerGroup = window.L.markerClusterGroup
+    ? L.markerClusterGroup({
+        maxClusterRadius: 28,
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        zoomToBoundsOnClick: true,
+        iconCreateFunction: (cluster) => L.divIcon({
+          className: "pir-map-cluster-host",
+          html: `<span class="pir-map-cluster">${cluster.getChildCount()}</span>`,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19],
+        }),
+      })
+    : null;
+  const bounds = [];
+  routePoints.forEach(({ person, place }, index) => {
+    const isSelected = selectedPerson === index;
+    const marker = L.marker([place.lat, place.lon], {
+      icon: L.divIcon({
+        className: `pir-map-marker-host${isSelected ? " selected" : ""}`,
+        html: `<span class="pir-map-number">${person.number}</span>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      }),
+      title: `${person.number}. ${person.name} — ${place.label}`,
+      riseOnHover: true,
+    });
+    const otherPlaces = (person.locations || []).slice(1).map((item) => escapeHtml(item.label));
+    const otherPlacesText = otherPlaces.length ? `<br><small>Бошқа жойлар: ${otherPlaces.join(" · ")}</small>` : "";
+    marker.bindPopup(`<strong>${person.number}. ${escapeHtml(person.name)}</strong><br>${escapeHtml(place.label)}<br><small>Асосий тахминий жой</small>${otherPlacesText}`);
+    if (markerGroup) markerGroup.addLayer(marker);
+    else marker.addTo(leafletMap);
     bounds.push([place.lat, place.lon]);
-    if (index === selectedPlace) marker.openPopup();
   });
-  if (bounds.length > 1) leafletMap.fitBounds(bounds, { padding: [26, 26], maxZoom: 7 });
+  if (markerGroup) leafletMap.addLayer(markerGroup);
+  if (bounds.length > 1) leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 4 });
   else if (bounds.length === 1) leafletMap.setView(bounds[0], 7);
   setTimeout(() => leafletMap?.invalidateSize(), 100);
 }

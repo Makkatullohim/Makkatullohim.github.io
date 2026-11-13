@@ -135,6 +135,12 @@ button { -webkit-tap-highlight-color: transparent; }
 .map-top strong { color: var(--ink); font: 600 16px "Noto Serif", Georgia, serif; }
 .map-top span { color: var(--muted); font-size: 10px; }
 #map { width: 100%; height: 270px; background: #e5e4d9; }
+.pir-map-marker-host { border: 0; background: transparent; }
+.pir-map-number { display: grid; width: 32px; height: 32px; place-items: center; border: 2px solid #f8edcf; border-radius: 50%; color: #fff8e7; background: #0d3b2d; box-shadow: 0 2px 8px rgba(0,0,0,.38); font: 700 11px "DM Sans", sans-serif; transition: transform .15s ease, background .15s ease, color .15s ease; }
+.pir-map-marker-host:hover .pir-map-number { transform: scale(1.12); }
+.pir-map-marker-host.selected .pir-map-number { border-color: #102c29; color: #102c29; background: #e0bd70; box-shadow: 0 0 0 3px rgba(224,189,112,.3), 0 2px 8px rgba(0,0,0,.35); }
+.pir-map-cluster-host { border: 0; background: transparent; }
+.pir-map-cluster { display: grid; width: 38px; height: 38px; place-items: center; border: 2px solid #f8edcf; border-radius: 50%; color: #102c29; background: #e0bd70; box-shadow: 0 2px 9px rgba(0,0,0,.35); font: 700 12px "DM Sans", sans-serif; }
 .map-selected { padding: 13px 15px 15px; }
 .map-selected h3 { margin: 0 0 8px; color: var(--ink); font: 600 18px "Noto Serif", Georgia, serif; }
 .location-pills { display: flex; flex-wrap: wrap; gap: 7px; }
