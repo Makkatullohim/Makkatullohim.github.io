@@ -210,6 +210,16 @@ button { -webkit-tap-highlight-color: transparent; }
 .prayer-table td:last-child, .prayer-table th:last-child { border-right: 0; }
 .prayer-table tbody tr:nth-child(even) { background: rgba(22,55,48,.035); }
 .prayer-table tbody tr.prayer-today-row { background: rgba(211,168,98,.2); }
+.prayer-day-list { display: grid; gap: 10px; }
+.prayer-day-card { overflow: hidden; border: 1px solid rgba(22,55,48,.12); border-radius: 14px; background: var(--paper); }
+.prayer-day-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(22,55,48,.1); color: var(--muted); font-size: 12px; font-weight: 700; }
+.prayer-day-heading .prayer-date-cell strong { color: var(--ink); font-size: 14px; }
+.prayer-day-times { margin: 0; padding: 0 14px; }
+.prayer-day-time { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 43px; border-bottom: 1px solid rgba(22,55,48,.08); }
+.prayer-day-time:last-child { border-bottom: 0; }
+.prayer-day-time dt { color: var(--ink); font-size: 12px; font-weight: 700; }
+.prayer-day-time dd { margin: 0; color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.prayer-day-time dd:not(:only-child) { max-width: 70%; }
 .prayer-date-cell strong, .prayer-date-cell small { display: block; }
 .prayer-date-cell small { margin-top: 3px; color: var(--muted); font-size: 9px; }
 .prayer-attribution { margin: 10px 3px 2px; color: #aebdaf; font-size: 10px; line-height: 1.5; }
@@ -429,3 +439,64 @@ body.home-mode .bottom-nav { border-top-color: rgba(169,126,55,.22); background:
 body.home-mode .nav-item { color: #738276; }
 body.home-mode .nav-item.active { color: #214838; background: #e6eee0; }
 body.home-mode .nav-icon { color: #9a7436; }
+
+/* Carry the approved light palette through the other sections too */
+body:not(.home-mode) {
+  color: #17372d;
+  background:
+    radial-gradient(ellipse at 82% 0%, rgba(221, 202, 150, .15), transparent 31rem),
+    radial-gradient(ellipse at 0% 42%, rgba(202, 220, 192, .26), transparent 26rem),
+    #faf9f1;
+}
+body:not(.home-mode) .topbar { color: #17372d; }
+body:not(.home-mode) .brand-copy strong { color: #17372d; }
+body:not(.home-mode) .brand-copy .eyebrow { color: #9a7436; }
+body:not(.home-mode) .date-chip { border-color: rgba(138,111,58,.32); color: #294638; background: rgba(255,255,255,.68); }
+body:not(.home-mode) .loading-state { color: #496553; }
+body:not(.home-mode) .spinner { border-color: rgba(41,70,56,.16); border-top-color: var(--gold-dark); }
+body:not(.home-mode) .page-intro { color: #294638; }
+body:not(.home-mode) .page-intro .eyebrow { color: #9a7436; }
+body:not(.home-mode) .page-intro h1 { color: #17372d; }
+body:not(.home-mode) .page-intro p { color: #637568; }
+body:not(.home-mode) .chain-summary { color: #17372d; }
+body:not(.home-mode) .chain-summary span { color: #637568; }
+body:not(.home-mode) .chain-summary .chain-count { color: #a87936; }
+body:not(.home-mode) .subnav { border-color: rgba(41,70,56,.13); background: rgba(238,243,232,.82); }
+body:not(.home-mode) .subnav button { color: #637568; }
+body:not(.home-mode) .subnav button.selected { color: #17372d; background: #dce8d5; box-shadow: 0 3px 12px rgba(42,67,49,.09); }
+body:not(.home-mode) .answer-question { color: #17372d; background: #e6eee0; }
+body:not(.home-mode) .answer-question .arabic { color: #17372d; }
+body:not(.home-mode) .session-bar { color: #637568; }
+body:not(.home-mode) .empty-box { border-color: rgba(41,70,56,.24); color: #496553; background: rgba(255,255,255,.64); }
+body:not(.home-mode) .empty-box strong { color: #17372d; }
+body:not(.home-mode) .empty-box p { color: #637568; }
+body:not(.home-mode) .prayer-panel { border-color: rgba(41,70,56,.13); background: rgba(255,255,255,.72); }
+body:not(.home-mode) .prayer-tab { border-color: rgba(41,70,56,.13); color: #637568; background: #f7f8f1; }
+body:not(.home-mode) .prayer-tab.selected { border-color: rgba(169,126,55,.5); color: #17372d; background: #e6eee0; }
+body:not(.home-mode) .prayer-month-picker { border-color: rgba(41,70,56,.13); color: #496553; background: #f7f8f1; }
+body:not(.home-mode) .prayer-month-picker input,
+body:not(.home-mode) .prayer-month-picker select { border-color: rgba(41,70,56,.2); color: #17372d; background: #fffdf7; }
+body:not(.home-mode) .prayer-source-note,
+body:not(.home-mode) .prayer-attribution { color: #637568; }
+body:not(.home-mode) .prayer-day-card { border-color: rgba(41,70,56,.13); background: rgba(255,255,255,.82); }
+body:not(.home-mode) .prayer-day-heading { border-bottom-color: rgba(41,70,56,.12); color: #637568; }
+body:not(.home-mode) .prayer-day-heading .prayer-date-cell strong { color: #17372d; }
+body:not(.home-mode) .prayer-day-time { border-bottom-color: rgba(41,70,56,.09); }
+body:not(.home-mode) .prayer-day-time dt { color: #294638; }
+body:not(.home-mode) .prayer-day-time dd { color: #17372d; }
+body:not(.home-mode) .prayer-day-card.prayer-today-row { border-color: rgba(169,126,55,.45); background: #f8f4e8; }
+body:not(.home-mode) .prayer-attribution a,
+body:not(.home-mode) .prayer-error a { color: #8a672f; }
+body:not(.home-mode) .prayer-error { color: #8b4435; }
+body:not(.home-mode) .person-row { border-color: rgba(41,70,56,.13); color: #17372d; background: rgba(255,255,255,.76); }
+body:not(.home-mode) .person-row.selected { border-color: rgba(169,126,55,.65); background: #edf3e7; }
+body:not(.home-mode) .person-row small { color: #637568; }
+body:not(.home-mode) .person-row .chevron { color: #9a7436; }
+body:not(.home-mode) .source-box { border-color: rgba(41,70,56,.13); color: #526857; background: rgba(255,255,255,.62); }
+body:not(.home-mode) .source-box a { color: #8a672f; }
+body:not(.home-mode) .guide-row { border-color: rgba(41,70,56,.13); color: #17372d; background: rgba(255,255,255,.76); }
+body:not(.home-mode) .guide-row small { color: #637568; }
+body:not(.home-mode) .bottom-nav { border-top-color: rgba(169,126,55,.22); background: rgba(250,249,241,.96); box-shadow: 0 -7px 22px rgba(42,67,49,.09); }
+body:not(.home-mode) .nav-item { color: #738276; }
+body:not(.home-mode) .nav-item.active { color: #214838; background: #e6eee0; }
+body:not(.home-mode) .nav-icon { color: #9a7436; }

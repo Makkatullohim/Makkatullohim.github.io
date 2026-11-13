@@ -418,7 +418,7 @@ function renderPrayerShell() {
     </section>`;
 }
 
-function prayerDisplayRows(dateKeys, rowsByDate, hijriMode = false) {
+function prayerDisplayRows(dateKeys, rowsByDate, hijriMode = false, verticalMode = false) {
   const visible = dateKeys.map((dateKey) => {
     const row = rowsByDate[dateKey];
     if (!row) return null;
@@ -431,14 +431,32 @@ function prayerDisplayRows(dateKeys, rowsByDate, hijriMode = false) {
       ? `<strong>${escapeHtml(hijriDate)}</strong><small>${escapeHtml(gregorianDate)}</small>`
       : `<strong>${escapeHtml(gregorianDate)}</strong>`;
     const tahajjud = next ? `${row.isha}–${next.fajr}` : "Хуфтондан бомдодгача";
+    const weekday = weekdayFormatter.format(dateAtTashkentNoon(dateKey));
+    const times = [
+      ["Бомдод", `${row.fajr} · саҳарлик тугаши`],
+      ["Қуёш", row.sunrise],
+      ["Ишроқ", `${addMinutes(row.sunrise, 20)} · қуёшдан тахминан 20 дақиқа кейин`],
+      ["Пешин", row.dhuhr],
+      ["Аср", row.asr],
+      ["Шом", `${row.maghrib} · ифторлик вақти`],
+      ["Хуфтон", row.isha],
+      ["Таҳажжуд", `${tahajjud} · хуфтондан кейинги бомдодгача`],
+    ];
+    if (verticalMode) {
+      return `<article class="prayer-day-card ${dateKey === localDay() ? "prayer-today-row" : ""}">
+        <header class="prayer-day-heading"><div class="prayer-date-cell">${dateLabel}</div><span>${escapeHtml(weekday)}</span></header>
+        <dl class="prayer-day-times">${times.map(([label, value]) => `<div class="prayer-day-time"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
+      </article>`;
+    }
     return `<tr class="${dateKey === localDay() ? "prayer-today-row" : ""}">
       <td class="prayer-date-cell">${dateLabel}</td>
-      <td>${escapeHtml(weekdayFormatter.format(dateAtTashkentNoon(dateKey)))}</td>
+      <td>${escapeHtml(weekday)}</td>
       <td>${escapeHtml(row.fajr)}</td><td>${escapeHtml(row.sunrise)}</td><td>${escapeHtml(addMinutes(row.sunrise, 20))}</td>
       <td>${escapeHtml(row.dhuhr)}</td><td>${escapeHtml(row.asr)}</td><td>${escapeHtml(row.maghrib)}</td><td>${escapeHtml(row.isha)}</td><td>${escapeHtml(tahajjud)}</td>
     </tr>`;
   }).filter(Boolean);
   if (!visible.length) return `<div class="empty-box"><strong>Сана топилмади</strong><p>Бу ой учун Islam.uz жадвалида маълумот йўқ.</p></div>`;
+  if (verticalMode) return `<div class="prayer-day-list">${visible.join("")}</div>`;
   return `<div class="prayer-table-scroll"><table class="prayer-table"><thead><tr>
     <th>Сана</th><th>Ҳафта куни</th><th>Бомдод<br><small>(саҳарлик тугаши)</small></th><th>Қуёш</th><th>Ишроқ<br><small>(+20 дақ.)</small></th>
     <th>Пешин</th><th>Аср</th><th>Шом<br><small>(ифторлик)</small></th><th>Хуфтон</th><th>Таҳажжуд<br><small>(хуфтон–кейинги бомдод)</small></th>
@@ -477,7 +495,7 @@ async function loadPrayerView() {
       for (const row of month.rows) rowsByDate[row.date] = row;
     }
     if (route !== "prayers") return;
-    const table = prayerDisplayRows(dateKeys, rowsByDate, prayerView === "hijri");
+    const table = prayerDisplayRows(dateKeys, rowsByDate, prayerView === "hijri", prayerView === "today" || prayerView === "tomorrow");
     const sourceMonth = prayerView === "month" ? prayerMonth : monthOf(dateKeys[0]);
     const sourceUrl = `https://islam.uz/vremyanamazov/27/${Number(sourceMonth.slice(5, 7))}`;
     const sourceLabel = prayerView === "today" ? "Бугунги Islam.uz жадвали" : "Islam.uz манба саҳифаси";
