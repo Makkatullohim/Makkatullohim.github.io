@@ -342,3 +342,90 @@ body.home-mode #app { min-height: 0; }
   .nasihat-expanded { padding: 17px 14px 14px; }
   .nasihat-card-actions { align-items: flex-start; flex-direction: column; }
 }
+
+/* Approved light sage and ivory palette for the home page */
+body.home-mode {
+  color: #17372d;
+  background:
+    radial-gradient(ellipse at 82% 0%, rgba(221, 202, 150, .18), transparent 31rem),
+    radial-gradient(ellipse at 0% 42%, rgba(202, 220, 192, .32), transparent 26rem),
+    #faf9f1;
+}
+body.home-mode .topbar { color: #17372d; }
+body.home-mode .brand-copy strong { color: #17372d; }
+body.home-mode .brand-copy .eyebrow { color: #9a7436; }
+body.home-mode .date-chip { border-color: rgba(138, 111, 58, .32); color: #294638; background: rgba(255,255,255,.68); }
+body.home-mode .loading-state { color: #496553; }
+body.home-mode .spinner { border-color: rgba(41, 70, 56, .16); border-top-color: var(--gold-dark); }
+
+body.home-mode .home-hero { border-color: rgba(174, 137, 69, .42); background: #edf3e7; box-shadow: 0 16px 38px rgba(42, 67, 49, .12); }
+body.home-mode .home-night-scene {
+  background:
+    radial-gradient(ellipse at 50% 78%, rgba(210, 226, 199, .65), transparent 40%),
+    radial-gradient(ellipse at 82% 18%, rgba(245, 232, 198, .42), transparent 30%),
+    linear-gradient(180deg, #f8f7ed 0%, #eff4e8 60%, #e7efe0 100%);
+}
+body.home-mode .home-night-scene::before { opacity: .28; }
+body.home-mode .home-arch { border-color: rgba(169, 126, 55, .58); box-shadow: inset 0 0 0 2px rgba(255,255,255,.52), 7px 0 24px rgba(150, 119, 60, .08); }
+body.home-mode .home-arch::after { border-color: rgba(169, 126, 55, .34); }
+body.home-mode .home-arch-window { border-color: rgba(169, 126, 55, .42); background: linear-gradient(180deg, transparent, rgba(213, 225, 201, .58)); }
+body.home-mode .home-crescent { background: #e5c575; box-shadow: 0 0 18px rgba(201, 164, 79, .25), 0 0 42px rgba(201, 164, 79, .14); }
+body.home-mode .home-crescent::after { background: #f4f5e9; }
+body.home-mode .hero-star { color: #a87d36; text-shadow: 0 0 8px rgba(201, 164, 79, .28); }
+body.home-mode .home-kicker { color: #9a7436; }
+body.home-mode .home-copy h1 { color: #17372d; text-shadow: none; }
+body.home-mode .home-copy h1 em { color: #a87936; }
+body.home-mode .home-ornament { color: #b08848; }
+body.home-mode .home-copy p { color: #4e6655; }
+body.home-mode .home-open-book { filter: drop-shadow(0 12px 16px rgba(56, 67, 44, .18)); }
+body.home-mode .home-horizon { background: linear-gradient(180deg, transparent, rgba(211, 225, 202, .82)); }
+body.home-mode .home-horizon::before { background: #dce8d5; }
+body.home-mode .home-horizon::after { background: #cadcc5; }
+body.home-mode .home-horizon i { background: #8fa98d; }
+
+body.home-mode .home-callout { border-color: #c7a359; background: radial-gradient(ellipse at center, #fffdf7 0%, #f6f2e6 72%, #e9e1ca 100%); box-shadow: 0 8px 24px rgba(56, 67, 44, .13), inset 0 0 0 3px rgba(255,255,255,.62); }
+body.home-mode .home-callout::before { border-color: rgba(156,110,41,.32); }
+body.home-mode .home-start-button { box-shadow: 0 4px 14px rgba(10,47,36,.16), inset 0 0 0 1px rgba(255,255,255,.12); }
+body.home-mode .home-progress { color: #496553; }
+body.home-mode .progress-label { color: #496553; }
+body.home-mode .home-progress-track { border-color: rgba(169,126,55,.45); background: rgba(255,255,255,.58); }
+body.home-mode .daily-intro { color: #294638; }
+body.home-mode .daily-intro .eyebrow { color: #9a7436; }
+body.home-mode .daily-intro p { color: #637568; }
+body.home-mode .reminder-note { border-color: rgba(169,126,55,.25); color: #4d624f; background: rgba(233, 238, 222, .78); }
+
+body.home-mode .counter-card { border-color: rgba(41,70,56,.14); color: #17372d; background: linear-gradient(145deg, #f4f7ed, #e7efe1); box-shadow: 0 12px 28px rgba(42,67,49,.09); }
+body.home-mode .counter-head .section-label { color: #9a7436; }
+body.home-mode .counter-figures { color: #68786b; }
+body.home-mode .counter-figures b { color: #17372d; }
+body.home-mode .count-ring { background: conic-gradient(var(--gold-dark) var(--progress), rgba(41,70,56,.12) var(--progress)); box-shadow: 0 0 0 1px rgba(41,70,56,.08), 0 0 26px rgba(160,128,62,.08); }
+body.home-mode .count-button { color: #17372d; background: #dce8d5; }
+body.home-mode .count-button small { color: #647669; }
+body.home-mode .counter-action { border-color: rgba(41,70,56,.16); color: #294638; background: rgba(255,255,255,.76); }
+body.home-mode .counter-action.subtle { color: #657568; }
+body.home-mode .complete-banner { color: #4d624f; background: rgba(211,168,98,.18); }
+body.home-mode .complete-banner strong { color: #85652f; }
+body.home-mode .progress-meta { color: #68786b; }
+body.home-mode .progress-track { background: rgba(41,70,56,.12); }
+
+body.home-mode .nasihat-card { border-color: rgba(169,126,55,.46); color: #17372d; background: #edf3e7; box-shadow: 0 13px 30px rgba(42,67,49,.11); }
+body.home-mode .nasihat-cover { background: radial-gradient(ellipse at 50% 30%, #f5f7eb, #e6eedf 78%); }
+body.home-mode .nasihat-image { opacity: .38; filter: saturate(.72) brightness(1.12); }
+body.home-mode .nasihat-image-shade { background: linear-gradient(180deg, rgba(250,249,241,.36) 0%, rgba(244,247,236,.62) 45%, rgba(234,241,227,.97) 100%); }
+body.home-mode .nasihat-no-image { background: radial-gradient(ellipse at 50% 30%, #f5f7eb, #e6eedf 78%); }
+body.home-mode .nasihat-label { color: #85652f; }
+body.home-mode .nasihat-quote { color: #17372d; text-shadow: none; }
+body.home-mode .nasihat-pir { color: #9a7436; }
+body.home-mode .nasihat-open-hint { color: #526857; }
+body.home-mode .nasihat-open-hint b { border-color: rgba(169,126,55,.52); color: #85652f; }
+body.home-mode .nasihat-arrow { border-color: rgba(169,126,55,.7); color: #294638; background: rgba(255,253,247,.9); box-shadow: 0 4px 14px rgba(42,67,49,.12); }
+body.home-mode .nasihat-arrow:hover, body.home-mode .nasihat-arrow:focus-visible { color: #17372d; background: #e5d4a8; }
+body.home-mode .nasihat-expanded { color: #17372d; background: linear-gradient(155deg, #fbfaf2, #e8efe2); }
+body.home-mode .nasihat-meaning, body.home-mode .nasihat-step-title { color: #294638; }
+body.home-mode .nasihat-step { border-color: rgba(148,112,55,.18); background: rgba(255,255,255,.7); }
+body.home-mode .nasihat-next { border-color: #b7934f; color: #f8f0db; background: #244b3d; }
+
+body.home-mode .bottom-nav { border-top-color: rgba(169,126,55,.22); background: rgba(250,249,241,.96); box-shadow: 0 -7px 22px rgba(42,67,49,.09); }
+body.home-mode .nav-item { color: #738276; }
+body.home-mode .nav-item.active { color: #214838; background: #e6eee0; }
+body.home-mode .nav-icon { color: #9a7436; }
