@@ -34,6 +34,7 @@ let prayerMonthCache = {};
 let memoryType = "pirs";
 let selectedPerson = 0;
 let selectedPlace = 0;
+let focusPirMapSelection = false;
 let selectedLesson = null;
 let leafletMap = null;
 let toastTimer;
@@ -852,12 +853,46 @@ function addMap() {
         `<div><strong>${person.number}. ${escapeHtml(person.name)}</strong><br>${escapeHtml(place.label)}</div>`
       ).join("<hr>"));
     });
+    const selectedPir = selectedPerson === 40 ? pirData.continuation : chain[selectedPerson];
+    const selectedLocation = selectedPir?.locations?.[selectedPlace] || selectedPir?.locations?.[0];
+    if (selectedLocation) {
+      const selectedNumber = selectedPir.number || 41;
+      L.circleMarker([selectedLocation.lat, selectedLocation.lon], {
+        radius: 22,
+        color: "#ffe49a",
+        weight: 2,
+        fillColor: "#ffe49a",
+        fillOpacity: 0.2,
+        opacity: 0.95,
+        interactive: false,
+      }).addTo(markerLayer);
+      const selectedMarker = L.circleMarker([selectedLocation.lat, selectedLocation.lon], {
+        radius: 14,
+        color: "#fff8dc",
+        weight: 3,
+        fillColor: "#bd3d2a",
+        fillOpacity: 1,
+        opacity: 1,
+      }).addTo(markerLayer);
+      selectedMarker.bindTooltip(`${selectedNumber}`, {
+        permanent: true,
+        direction: "center",
+        className: "pir-number-tooltip is-selected",
+        opacity: 1,
+      });
+      selectedMarker.bindPopup(`<strong>${selectedNumber}. ${escapeHtml(selectedPir.name)}</strong><br>${escapeHtml(selectedLocation.label)}<br><small>Рўйхатдан танланган пир</small>`);
+    }
   };
   const bounds = [];
   routePoints.forEach(({ place }) => {
     bounds.push([place.lat, place.lon]);
   });
-  if (bounds.length > 1) leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 4 });
+  const selectedPir = selectedPerson === 40 ? pirData.continuation : chain[selectedPerson];
+  const selectedLocation = selectedPir?.locations?.[selectedPlace] || selectedPir?.locations?.[0];
+  if (focusPirMapSelection && selectedLocation) {
+    leafletMap.setView([selectedLocation.lat, selectedLocation.lon], 9);
+    focusPirMapSelection = false;
+  } else if (bounds.length > 1) leafletMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 4 });
   else if (bounds.length === 1) leafletMap.setView(bounds[0], 7);
   renderNumberedMarkers();
   leafletMap.on("zoomend", renderNumberedMarkers);
@@ -1063,10 +1098,14 @@ app.addEventListener("click", (event) => {
   } else if (action === "select-person") {
     selectedPerson = Number(button.dataset.person);
     selectedPlace = 0;
+    focusPirMapSelection = true;
     render(true);
+    requestAnimationFrame(() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth", block: "center" }));
   } else if (action === "select-place") {
     selectedPlace = Number(button.dataset.place);
+    focusPirMapSelection = true;
     render(true);
+    requestAnimationFrame(() => document.getElementById("map")?.scrollIntoView({ behavior: "smooth", block: "center" }));
   } else if (action === "open-lesson") {
     selectedLesson = Number(button.dataset.lesson);
     render();
