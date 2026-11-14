@@ -238,15 +238,12 @@ button { -webkit-tap-highlight-color: transparent; }
 .toast { position: fixed; z-index: 1000; right: 20px; bottom: calc(82px + var(--safe-bottom)); left: 20px; max-width: 400px; margin: 0 auto; padding: 11px 14px; border-radius: 12px; color: var(--cream); background: #204a3e; box-shadow: 0 8px 25px rgba(0,0,0,.24); font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s; }
 .toast.show { opacity: 1; transform: translateY(0); }
 
-.reminder-note { margin: 0 2px 14px; padding: 12px 14px; border: 1px solid rgba(211,168,98,.28); border-radius: 14px; color: #e3dcc6; background: rgba(211,168,98,.09); font-size: 12px; line-height: 1.55; }
 .daily-lessons { display: grid; gap: 13px; }
 .daily-lesson-card { overflow: hidden; padding: 16px; border: 1px solid rgba(253,249,237,.72); border-radius: 21px; background: var(--paper); box-shadow: var(--shadow); }
 .daily-lesson-heading { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
 .daily-lesson-heading .guide-num { width: 36px; height: 36px; font-size: 12px; }
 .daily-lesson-heading h2 { margin: 0; color: var(--ink); font: 600 19px/1.3 "Noto Serif", Georgia, serif; }
 .daily-lesson-heading small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
-.reminder-time-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: rgba(255,255,255,.55); font-size: 12px; font-weight: 600; }
-.reminder-time-row input { min-height: 38px; padding: 6px 8px; border: 1px solid rgba(22,55,48,.18); border-radius: 9px; color: var(--forest); background: #fffdf6; font-variant-numeric: tabular-nums; }
 .daily-lesson-card .counter-card { margin-top: 0; padding: 14px; border-radius: 16px; }
 .daily-lesson-card .count-ring { width: 112px; height: 112px; }
 .daily-lesson-card .count-button { width: 91px; height: 91px; }
@@ -255,9 +252,6 @@ button { -webkit-tap-highlight-color: transparent; }
 .daily-lesson-details { margin-top: 12px; border-top: 1px solid var(--line); color: var(--ink); }
 .daily-lesson-details summary { padding: 12px 2px 2px; color: var(--forest-3); font-size: 12px; font-weight: 700; cursor: pointer; }
 .daily-lesson-details .lesson-copy { padding: 10px 2px 3px; font-size: 13px; line-height: 1.75; }
-.reminder-save-card { display: grid; gap: 13px; margin-top: 14px; padding: 18px; }
-.reminder-save-card strong { display: block; margin-top: 6px; color: var(--ink); font: 600 18px/1.3 "Noto Serif", Georgia, serif; }
-.reminder-save-card p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 
 .prayer-panel { overflow: hidden; padding: 12px; border: 1px solid rgba(244,239,223,.18); border-radius: 20px; background: rgba(255,255,255,.045); }
 .prayer-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
@@ -486,7 +480,6 @@ body.home-mode .home-progress-track { border-color: rgba(169,126,55,.45); backgr
 body.home-mode .daily-intro { color: #294638; }
 body.home-mode .daily-intro .eyebrow { color: #9a7436; }
 body.home-mode .daily-intro p { color: #637568; }
-body.home-mode .reminder-note { border-color: rgba(169,126,55,.25); color: #4d624f; background: rgba(233, 238, 222, .78); }
 
 body.home-mode .counter-card { border-color: rgba(41,70,56,.14); color: #17372d; background: linear-gradient(145deg, #f4f7ed, #e7efe1); box-shadow: 0 12px 28px rgba(42,67,49,.09); }
 body.home-mode .counter-head .section-label { color: #9a7436; }

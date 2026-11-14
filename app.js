@@ -146,7 +146,6 @@ function datesInHijriMonth(monthKey) {
 function emptyState() {
   return {
     daily: null,
-    schedule: {},
     completedStages: [],
     memories: {
       pirs: { quota: 1, method: "stages", completed: [], session: null },
@@ -175,7 +174,6 @@ function loadState() {
         ...base,
         ...saved,
         daily,
-        schedule: { ...base.schedule, ...(saved.schedule || {}) },
         memories: {
           ...base.memories,
           ...(saved.memories || {}),
@@ -242,16 +240,12 @@ function pageIntro(label, title, description) {
 
 function renderCounter(lesson, index, done) {
   const count = Number(state.daily?.counts?.[index] || 0);
-  const reminderTime = state.schedule?.[index] || "";
   const percent = Math.min(100, Math.round((count / lesson.count) * 100));
   return `<article class="daily-lesson-card">
     <div class="daily-lesson-heading">
       <span class="guide-num">${String(index + 1).padStart(2, "0")}</span>
       <div><h2>${escapeHtml(lesson.title)}</h2><small>${lesson.count.toLocaleString("uz-UZ")} марта · ҳар куни</small></div>
     </div>
-    <label class="reminder-time-row"><span>Кунлик эслатма вақти</span>
-      <input type="time" value="${escapeHtml(reminderTime)}" data-action="reminder-time" data-lesson="${index}" aria-label="${escapeHtml(lesson.title)} эслатма вақти">
-    </label>
     <section class="counter-card">
     <div class="counter-head">
       <span class="section-label">Бугунги саноқ</span>
@@ -319,7 +313,6 @@ function renderToday() {
   document.getElementById("today-date").textContent = formatDate();
   if (lessons.length === 0) return `<div class="empty-box"><strong>Дарслар топилмади</strong><p>Қўлланма матнини қайта юкланг.</p></div>`;
   const cards = lessons.map((lesson, index) => renderCounter(lesson, index, Number(state.daily.counts[index] || 0) >= lesson.count)).join("");
-  const configured = Object.values(state.schedule || {}).filter(Boolean).length;
   const completed = lessons.filter((lesson, index) => Number(state.daily.counts[index] || 0) >= lesson.count).length;
   const progress = Math.round((completed / lessons.length) * 100);
   return `${renderNasihat()}<section class="home-hero">
@@ -360,14 +353,9 @@ function renderToday() {
     </section>
     <div class="daily-intro">
       <span class="eyebrow">БУГУН · ${lessons.length} ТА ДАРС</span>
-      <p>Барча дарслар ҳар куни ўқилади. Ҳар бирининг саноғи ва эслатма вақтини алоҳида белгиланг.</p>
+      <p>Барча дарслар ҳар куни ўқилади. Ҳар бир дарснинг саноғи алоҳида сақланади.</p>
     </div>
-    <div class="reminder-note">Вақт белгиланган дарсларга бот ҳар куни хабар юборади. Вақтсиз қолдирилган дарсларга эслатма келмайди.</div>
-    <div class="daily-lessons" id="daily-lessons">${cards}</div>
-    <section class="paper-card reminder-save-card">
-      <div><span class="section-label">Эслатмалар</span><strong>${configured} та дарсга вақт белгиланган</strong><p>Ўзгаришлар шу қурилмада сақланади. Telegram ботга юбориш учун қуйидаги тугмани босинг.</p></div>
-      <button class="primary-button gold wide" data-action="save-reminders">Вақтларни ботга юбориш</button>
-    </section>`;
+    <div class="daily-lessons" id="daily-lessons">${cards}</div>`;
 }
 
 async function fetchPrayerMonth(monthKey) {
@@ -1164,24 +1152,6 @@ function setQuota(value) {
   render(true);
 }
 
-function sendReminderTimes() {
-  const times = Object.fromEntries(
-    Object.entries(state.schedule || {}).filter(([index, value]) => Number.isInteger(Number(index)) && value),
-  );
-  const payload = JSON.stringify({ type: "reminders", times });
-  saveState();
-  if (telegramApp && typeof telegramApp.sendData === "function") {
-    try {
-      telegramApp.sendData(payload);
-      showToast("Вақтлар Telegram ботига юборилди.");
-      return;
-    } catch (_) {
-      // The method works only when the Mini App was opened from a reply-keyboard button.
-    }
-  }
-  showToast("Ботга юбориш учун иловадаги «Вирд вақтларини белгилаш» тугмаси орқали очинг.");
-}
-
 app.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (!button) return;
@@ -1221,8 +1191,6 @@ app.addEventListener("click", (event) => {
     state.daily.counts[index] = 0;
     saveState();
     render(true);
-  } else if (action === "save-reminders") {
-    sendReminderTimes();
   } else if (action === "memory-type") {
     memoryType = button.dataset.type;
     render();
@@ -1318,14 +1286,6 @@ app.addEventListener("change", (event) => {
   } else if (event.target.matches("[data-action='hijri-month']")) {
     selectedHijriMonth = event.target.value;
     render();
-  }
-  else if (event.target.matches("[data-action='reminder-time']")) {
-    const index = Number(event.target.dataset.lesson);
-    if (!lessons[index]) return;
-    if (event.target.value) state.schedule[index] = event.target.value;
-    else delete state.schedule[index];
-    saveState();
-    render(true);
   }
 });
 
