@@ -853,6 +853,21 @@ function renderMemoryResult(type, meta, memory, session) {
     </section>`;
 }
 
+function renderAsmaIndex(session) {
+  const names = asmaData.names;
+  const completed = completedSet("asma");
+  const activeIndex = session.status === "quiz" && session.quiz
+    ? session.quiz.items[session.quiz.index]
+    : session.items[session.studyIndex] ?? names.findIndex((_, index) => !completed.has(index));
+  const rows = names.map((item, index) => {
+    const isDone = completed.has(index);
+    const isActive = index === activeIndex;
+    const status = isDone ? "✓ Ёдланган" : isActive ? "Ҳозирги" : "Танлаш учун босинг";
+    return `<button class="asma-index-row ${isDone ? "is-done" : ""} ${isActive ? "is-active" : ""}" data-action="asma-select" data-index="${index}" aria-current="${isActive ? "true" : "false"}"><span class="asma-index-number">${String(item.number).padStart(2, "0")}</span><span class="asma-index-copy"><strong>${escapeHtml(item.reading)}</strong><small>${status}</small></span>${isDone ? `<span class="asma-check" aria-label="Ёдланган">✓</span>` : ""}</button>`;
+  }).join("");
+  return `<aside class="asma-index paper-card" aria-label="Аллоҳнинг 99 исми рўйхати"><div class="asma-index-head"><div><span class="section-label">Доимий рўйхат</span><h2>99 исм</h2></div><span class="asma-total">${completed.size} / ${names.length}</span></div><div class="asma-index-progress" role="progressbar" aria-label="Ёдланган исмлар" aria-valuemin="0" aria-valuemax="${names.length}" aria-valuenow="${completed.size}"><span style="width:${completed.size / names.length * 100}%"></span></div><div class="asma-index-list">${rows}</div><p class="asma-index-foot">✓ белгиси — ёдланган исм</p></aside>`;
+}
+
 function renderMemory() {
   document.getElementById("today-date").textContent = formatDate();
   const type = memoryType;
@@ -862,17 +877,17 @@ function renderMemory() {
   if (!memory.completed) memory.completed = [];
   const remaining = data.length - memory.completed.length;
   const session = getMemorySession(type);
-
-  if (session.status === "study") return renderStudy(type, meta, session);
-  if (session.status === "examIntro") return renderExamIntro(type, meta, session);
-  if (session.status === "quiz") return renderQuiz(type, meta, session);
-  if (session.status === "result") return renderMemoryResult(type, meta, memory, session);
-  if (session.status === "complete" || remaining <= 0) {
+  let content;
+  if (session.status === "study") content = renderStudy(type, meta, session);
+  else if (session.status === "examIntro") content = renderExamIntro(type, meta, session);
+  else if (session.status === "quiz") content = renderQuiz(type, meta, session);
+  else if (session.status === "result") content = renderMemoryResult(type, meta, memory, session);
+  else if (session.status === "complete" || remaining <= 0) {
     const stageCount = Math.ceil(data.length / 5);
     const stageCopy = selectedMemoryMethod(type) === "stages" ? `<div class="section-label">${stageCount} / ${stageCount} босқич</div>` : "";
-    return `${pageIntro("ЁДЛАШ ДАСТУРИ", "Рўйхат якунланди", "Барча бандлар ёдланган деб белгиланди.")}${memoryTabs()}${memoryMethodTabs(type)}<div class="empty-box">${stageCopy}<strong>${escapeHtml(meta.title)}</strong><p>${data.length} / ${data.length} та банд бажарилди.</p></div>`;
-  }
-  return renderMemoryPlan(type, meta, memory, session, remaining);
+    content = `${pageIntro("ЁДЛАШ ДАСТУРИ", "Рўйхат якунланди", "Барча бандлар ёдланган деб белгиланди.")}${memoryTabs()}${memoryMethodTabs(type)}<div class="empty-box">${stageCopy}<strong>${escapeHtml(meta.title)}</strong><p>${data.length} / ${data.length} та банд бажарилди.</p></div>`;
+  } else content = renderMemoryPlan(type, meta, memory, session, remaining);
+  return type === "asma" ? `<div class="asma-dashboard">${renderAsmaIndex(session)}<div class="asma-learning">${content}</div></div>` : content;
 }
 
 function renderPersonList() {
@@ -1218,6 +1233,18 @@ app.addEventListener("click", (event) => {
     createMemorySession(type);
     saveState();
     render();
+  } else if (action === "asma-select") {
+    const index = Number(button.dataset.index);
+    if (!asmaData.names[index]) return;
+    const session = getMemorySession("asma");
+    session.items = [index];
+    session.studyIndex = 0;
+    session.status = "study";
+    session.quiz = null;
+    session.result = null;
+    memoryType = "asma";
+    saveState();
+    render(true);
   } else if (action === "memory-study") {
     const session = getMemorySession(memoryType);
     session.status = "study";
