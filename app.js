@@ -634,8 +634,8 @@ function memoryMethodTabs(type, selected = selectedMemoryMethod(type)) {
   const title = type === "pirs" ? "40 пирни ёдлаш усули" : "99 исмни ёдлаш усули";
   return `<div class="memory-method-heading">${title}</div>
     <div class="memory-method-tabs" role="tablist" aria-label="${title}">
-      <button data-action="memory-method" data-type="${type}" data-method="quota" role="tab" aria-selected="${selected === "quota"}" class="${selected === "quota" ? "selected" : ""}">Кунлик меъёр</button>
-      <button data-action="memory-method" data-type="${type}" data-method="stages" role="tab" aria-selected="${selected === "stages"}" class="${selected === "stages" ? "selected" : ""}">Босқичма-босқич</button>
+      <button data-action="memory-method" data-type="${type}" data-method="quota" role="tab" aria-selected="${selected === "quota"}" class="${selected === "quota" ? "selected" : ""}"><strong>Кунлик меъёр</strong><small>Кунига ёдлайдиган исмлар сонини ўзингиз белгиланг.</small></button>
+      <button data-action="memory-method" data-type="${type}" data-method="stages" role="tab" aria-selected="${selected === "stages"}" class="${selected === "stages" ? "selected" : ""}"><strong>Босқичма-босқич</strong><small>5 тадан ўрганинг, сўнг ёддан текширинг.</small></button>
     </div>`;
 }
 
@@ -733,6 +733,7 @@ function renderStudy(type, meta, session) {
     : `<div class="arabic" style="font-size:42px;margin-top:12px">${escapeHtml(item.arabic)}</div><div class="study-reading">${escapeHtml(item.reading)}</div><div class="meaning-line">${escapeHtml(item.meaning)}</div>`;
   return `${pageIntro("ЁДЛАШ", meta.title, "Исми, ўқилиши ва маъносини бирга ўрганинг.")}
     ${memoryTabs()}
+    ${memoryMethodTabs(type)}
     <section class="paper-card study-card">
       <div class="study-index"><span>${session.studyIndex + 1} / ${session.items.length}</span><span>${item.number}-${isPirs ? "ҳалқа" : "исм"}</span></div>
       <h2 class="study-name">${escapeHtml(memoryItemName(type, item))}</h2>
@@ -744,6 +745,7 @@ function renderStudy(type, meta, session) {
 function renderExamIntro(type, meta, session) {
   return `${pageIntro("ЎЗИНГИЗНИ СИНАНГ", "Ёддан айтиб кўринг", "Жавобни очишдан олдин исмни эслаб, овоз чиқариб ёки ичингизда айтиб кўринг.")}
     ${memoryTabs()}
+    ${memoryMethodTabs(type)}
     <section class="paper-card study-card">
       <div class="section-label">Бугунги имтиҳон</div>
       <h2 class="study-name">${session.items.length} та ${escapeHtml(meta.noun)}</h2>
@@ -787,12 +789,12 @@ function renderQuiz(type, meta, session) {
         const text = isPirs ? candidate.name : candidate.reading;
         return `<button class="quiz-choice" data-action="quiz-choice" data-choice="${index}">${escapeHtml(text)}</button>`;
       }).join("");
-      return `${pageIntro(roundLabel, "Имтиҳон", "Тўғри жавобни белгиланг.")}${memoryTabs()}
+      return `${pageIntro(roundLabel, "Имтиҳон", "Тўғри жавобни белгиланг.")}${memoryTabs()}${memoryMethodTabs(type)}
         <section class="paper-card quiz-card"><div class="session-bar"><span>${quiz.index + 1} / ${quiz.items.length}</span><span>${quiz.correct} тўғри</span></div>
         <div class="answer-question">${answer}<strong>${escapeHtml(prompt)}</strong></div>${options}</section>`;
     }
     const correct = quiz.selected === correctIndex;
-    return `${pageIntro(roundLabel, correct ? "Тўғри жавоб" : "Такрорлаш керак", "")}${memoryTabs()}
+    return `${pageIntro(roundLabel, correct ? "Тўғри жавоб" : "Такрорлаш керак", "")}${memoryTabs()}${memoryMethodTabs(type)}
       <section class="paper-card quiz-card"><div class="session-bar"><span>${quiz.index + 1} / ${quiz.items.length}</span><span>${quiz.correct} тўғри</span></div>
       <div class="answer-question">${answer}<strong>${escapeHtml(prompt)}</strong></div>
       <div class="quiz-feedback">${correct ? "Жуда яхши." : `Тўғри жавоб: ${escapeHtml(isPirs ? item.name : item.reading)}.`}${isPirs ? "" : ` Маъноси: ${escapeHtml(item.meaning)}`}</div>
@@ -803,7 +805,7 @@ function renderQuiz(type, meta, session) {
   answer = isPirs
     ? `<strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(memoryItemSubline(type, item))}</small>`
     : `<div class="arabic">${escapeHtml(item.arabic)}</div><strong>${escapeHtml(item.reading)}</strong><small>${escapeHtml(item.meaning)}</small>`;
-  return `${pageIntro(roundLabel, "Ёддан жавоб беринг", "Аввал жавобни ўзингиз айтинг, кейин жавобни очинг.")}${memoryTabs()}
+  return `${pageIntro(roundLabel, "Ёддан жавоб беринг", "Аввал жавобни ўзингиз айтинг, кейин жавобни очинг.")}${memoryTabs()}${memoryMethodTabs(type)}
     <section class="paper-card quiz-card"><div class="session-bar"><span>${quiz.index + 1} / ${quiz.items.length}</span><span>${quiz.correct} тўғри</span></div>
     <div class="answer-question">${isPirs ? `<strong>№ ${item.number}</strong>` : `<div class="arabic">${escapeHtml(item.arabic)}</div>`}<strong>${escapeHtml(prompt)}</strong></div>
     ${quiz.answerVisible ? `<div class="memorize-item"><div class="item-detail">${answer}</div></div>

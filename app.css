@@ -101,7 +101,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .memory-tab-caption { font-size: 10px; font-weight: 500; opacity: .78; }
 .memory-method-heading { margin: 13px 3px 7px; color: #b6c4b7; font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
 .memory-method-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 14px; }
-.memory-method-tabs button { min-height: 38px; padding: 8px 10px; border: 1px solid rgba(243,239,224,.15); border-radius: 11px; color: #c6d0c4; background: rgba(255,255,255,.04); font-size: 11px; font-weight: 600; cursor: pointer; }
+.memory-method-tabs button { display: grid; min-height: 66px; align-content: center; gap: 4px; padding: 9px 11px; border: 1px solid rgba(243,239,224,.15); border-radius: 13px; color: #c6d0c4; background: rgba(255,255,255,.04); text-align: left; cursor: pointer; }
+.memory-method-tabs button strong { font-size: 12px; font-weight: 700; }
+.memory-method-tabs button small { font-size: 10px; font-weight: 400; line-height: 1.35; opacity: .82; }
 .memory-method-tabs button.selected { border-color: rgba(211,168,98,.44); color: #f3e7c8; background: rgba(211,168,98,.13); }
 .memory-plan { padding: 19px; }
 .stage-overview { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
