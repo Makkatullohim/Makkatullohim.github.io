@@ -418,11 +418,37 @@ function renderPrayerShell() {
     </section>`;
 }
 
+function prayerClockMinutes(value) {
+  const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function calculateTahajjud(row, nextDayRow) {
+  const ishaMinutes = prayerClockMinutes(row?.isha);
+  const fajrMinutes = prayerClockMinutes(nextDayRow?.fajr);
+  if (ishaMinutes === null || fajrMinutes === null) {
+    return { time: "—", interval: "Кейинги кунги бомдод вақти топилмади" };
+  }
+  const nightMinutes = (fajrMinutes - ishaMinutes + 1440) % 1440;
+  if (!nightMinutes) return { time: "—", interval: "Хуфтон ва бомдод вақти текширилсин" };
+  const tahajjudMinutes = (ishaMinutes + nightMinutes * 2 / 3) % 1440;
+  const roundedHour = Math.floor((tahajjudMinutes + 30) / 60) % 24;
+  return {
+    time: `${String(roundedHour).padStart(2, "0")}:00`,
+    interval: `Хуфтон ${row.isha} дан Бомдод ${nextDayRow.fajr} гача`,
+  };
+}
+
 function prayerDisplayRows(dateKeys, rowsByDate, hijriMode = false, verticalMode = false) {
   const visible = dateKeys.map((dateKey) => {
     const row = rowsByDate[dateKey];
     if (!row) return null;
     const next = rowsByDate[addDays(dateKey, 1)];
+    const tahajjud = calculateTahajjud(row, next);
     const hijriDate = formatHijriDate(dateKey);
     const gregorianDate = new Intl.DateTimeFormat("uz-Cyrl-UZ", {
       timeZone: timezone, day: "numeric", month: "short",
@@ -430,43 +456,44 @@ function prayerDisplayRows(dateKeys, rowsByDate, hijriMode = false, verticalMode
     const dateLabel = hijriMode
       ? `<strong>${escapeHtml(hijriDate)}</strong><small>${escapeHtml(gregorianDate)}</small>`
       : `<strong>${escapeHtml(gregorianDate)}</strong>`;
-    const tahajjud = next ? `${row.isha}–${next.fajr}` : "Хуфтондан бомдодгача";
     const weekday = weekdayFormatter.format(dateAtTashkentNoon(dateKey));
     const times = [
-      ["Бомдод", `${row.fajr} · саҳарлик тугаши`],
-      ["Қуёш", row.sunrise],
-      ["Ишроқ", `${addMinutes(row.sunrise, 20)} · қуёшдан тахминан 20 дақиқа кейин`],
-      ["Пешин", row.dhuhr],
-      ["Аср", row.asr],
-      ["Шом", `${row.maghrib} · ифторлик вақти`],
-      ["Хуфтон", row.isha],
-      ["Таҳажжуд", `${tahajjud} · хуфтондан кейинги бомдодгача`],
+      { label: "Бомдод", time: row.fajr, note: "саҳарлик тугаши" },
+      { label: "Қуёш", time: row.sunrise, note: "" },
+      { label: "Ишроқ", time: addMinutes(row.sunrise, 20), note: "қуёш чиққандан тахминан 20 дақиқа кейин" },
+      { label: "Пешин", time: row.dhuhr, note: "" },
+      { label: "Аср", time: row.asr, note: "" },
+      { label: "Шом", time: row.maghrib, note: "ифторлик вақти" },
+      { label: "Хуфтон", time: row.isha, note: "" },
+      { label: "Таҳажжуд", time: tahajjud.time, note: `${tahajjud.interval} · туннинг 2/3 қисми` },
     ];
     if (verticalMode) {
       return `<article class="prayer-day-card ${dateKey === localDay() ? "prayer-today-row" : ""}">
         <header class="prayer-day-heading"><div class="prayer-date-cell">${dateLabel}</div><span>${escapeHtml(weekday)}</span></header>
-        <dl class="prayer-day-times">${times.map(([label, value]) => `<div class="prayer-day-time"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>
+        <div class="prayer-day-times">
+          <div class="prayer-day-time prayer-day-time-heading"><span>Намоз</span><span>Вақти</span><span>Изоҳ</span></div>
+          ${times.map(({ label, time, note }) => `<div class="prayer-day-time"><strong>${label}</strong><time>${escapeHtml(time)}</time><small>${escapeHtml(note)}</small></div>`).join("")}
+        </div>
       </article>`;
     }
     return `<tr class="${dateKey === localDay() ? "prayer-today-row" : ""}">
       <td class="prayer-date-cell">${dateLabel}</td>
       <td>${escapeHtml(weekday)}</td>
       <td>${escapeHtml(row.fajr)}</td><td>${escapeHtml(row.sunrise)}</td><td>${escapeHtml(addMinutes(row.sunrise, 20))}</td>
-      <td>${escapeHtml(row.dhuhr)}</td><td>${escapeHtml(row.asr)}</td><td>${escapeHtml(row.maghrib)}</td><td>${escapeHtml(row.isha)}</td><td>${escapeHtml(tahajjud)}</td>
+      <td>${escapeHtml(row.dhuhr)}</td><td>${escapeHtml(row.asr)}</td><td>${escapeHtml(row.maghrib)}</td><td>${escapeHtml(row.isha)}</td><td class="prayer-tahajjud-cell"><strong>${escapeHtml(tahajjud.time)}</strong><small>${escapeHtml(tahajjud.interval)}</small></td>
     </tr>`;
   }).filter(Boolean);
   if (!visible.length) return `<div class="empty-box"><strong>Сана топилмади</strong><p>Бу ой учун Islam.uz жадвалида маълумот йўқ.</p></div>`;
   if (verticalMode) return `<div class="prayer-day-list">${visible.join("")}</div>`;
   return `<div class="prayer-table-scroll"><table class="prayer-table"><thead><tr>
     <th>Сана</th><th>Ҳафта куни</th><th>Бомдод<br><small>(саҳарлик тугаши)</small></th><th>Қуёш</th><th>Ишроқ<br><small>(+20 дақ.)</small></th>
-    <th>Пешин</th><th>Аср</th><th>Шом<br><small>(ифторлик)</small></th><th>Хуфтон</th><th>Таҳажжуд<br><small>(хуфтон–кейинги бомдод)</small></th>
+    <th>Пешин</th><th>Аср</th><th>Шом<br><small>(ифторлик)</small></th><th>Хуфтон</th><th>Таҳажжуд<br><small>(туннинг 2/3 қисми)</small></th>
   </tr></thead><tbody>${visible.join("")}</tbody></table></div>`;
 }
 
 async function loadPrayerView() {
   const resultNode = document.getElementById("prayer-results");
   if (!resultNode) return;
-  const year = Number(localDay().slice(0, 4));
   try {
     const anchorMonth = prayerView === "month" ? prayerMonth : monthOf(localDay());
     const anchorData = await fetchPrayerMonth(anchorMonth);
@@ -486,9 +513,7 @@ async function loadPrayerView() {
 
     if (!dateKeys.length) throw new Error("Танланган ҳижрий ой жорий йил жадвалида топилмади.");
     const datesToLoad = [...dateKeys, addDays(dateKeys[dateKeys.length - 1], 1)];
-    const monthKeys = [...new Set(datesToLoad
-      .filter((dateKey) => Number(dateKey.slice(0, 4)) === year)
-      .map(monthOf))];
+    const monthKeys = [...new Set(datesToLoad.map(monthOf))];
     const months = await Promise.all(monthKeys.map(fetchPrayerMonth));
     const rowsByDate = {};
     for (const month of [anchorData, ...months]) {
