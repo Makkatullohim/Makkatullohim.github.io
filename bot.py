@@ -164,7 +164,7 @@ def mini_app_keyboard():
     if not MINI_APP_URL.startswith("https://"):
         return None
     button = KeyboardButton(
-        text="⏰ ЗИКР НУРИ",
+        text="✨ ЗИКР НУРИ",
         web_app=WebAppInfo(url=MINI_APP_URL),
     )
     return ReplyKeyboardMarkup([[button]], resize_keyboard=True, is_persistent=True)
