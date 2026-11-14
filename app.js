@@ -149,8 +149,8 @@ function emptyState() {
     schedule: {},
     completedStages: [],
     memories: {
-      pirs: { quota: 1, completed: [], session: null },
-      asma: { quota: 3, completed: [], session: null },
+      pirs: { quota: 1, method: "stages", completed: [], session: null },
+      asma: { quota: 3, method: "stages", completed: [], session: null },
     },
   };
 }
@@ -547,6 +547,12 @@ function memoryStore(type) {
   return state.memories[type];
 }
 
+function selectedMemoryMethod(type) {
+  const memory = memoryStore(type);
+  if (!["stages", "quota"].includes(memory.method)) memory.method = "stages";
+  return memory.method;
+}
+
 function completedSet(type) {
   const memory = memoryStore(type);
   if (!Array.isArray(memory.completed)) memory.completed = [];
@@ -557,11 +563,26 @@ function createMemorySession(type) {
   const items = memoryData(type);
   const memory = memoryStore(type);
   const done = completedSet(type);
-  const quota = Math.max(1, Math.min(memory.quota || 1, items.length));
-  const batch = items.map((_, index) => index).filter((index) => !done.has(index)).slice(0, quota);
+  const method = selectedMemoryMethod(type);
+  let batch;
+  let stageNumber = null;
+  if (method === "stages") {
+    const nextIndex = items.findIndex((_, index) => !done.has(index));
+    const stageCount = Math.ceil(items.length / 5);
+    const stageStart = nextIndex < 0 ? items.length : Math.floor(nextIndex / 5) * 5;
+    stageNumber = Math.min(stageCount, Math.floor(stageStart / 5) + 1);
+    batch = items
+      .map((_, index) => index)
+      .filter((index) => index >= stageStart && index < stageStart + 5 && !done.has(index));
+  } else {
+    const quota = Math.max(1, Math.min(memory.quota || 1, items.length));
+    batch = items.map((_, index) => index).filter((index) => !done.has(index)).slice(0, quota);
+  }
   memory.session = {
     day: localDay(),
     items: batch,
+    method,
+    stageNumber,
     status: batch.length ? "plan" : "complete",
     studyIndex: 0,
     quiz: null,
@@ -574,7 +595,12 @@ function getMemorySession(type) {
   const memory = memoryStore(type);
   if (!memory.completed) memory.completed = [];
   if (!memory.quota) memory.quota = type === "asma" ? 3 : 1;
-  if (!memory.session || memory.session.day !== localDay()) createMemorySession(type);
+  const desiredMethod = selectedMemoryMethod(type);
+  if (!memory.session || memory.session.day !== localDay()
+    || (memory.session.status === "plan" && memory.session.method !== desiredMethod)) {
+    createMemorySession(type);
+  }
+  if (memory.session && !memory.session.method) memory.session.method = "quota";
   return memory.session;
 }
 
@@ -598,17 +624,75 @@ function renderMemoryItem(type, index, compact = false) {
 }
 
 function memoryTabs() {
-  return `<div class="subnav" role="tablist">
-    <button data-action="memory-type" data-type="pirs" class="${memoryType === "pirs" ? "selected" : ""}">40 пир</button>
-    <button data-action="memory-type" data-type="asma" class="${memoryType === "asma" ? "selected" : ""}">99 исм</button>
+  return `<div class="subnav memory-tabs" role="tablist" aria-label="Ёдлаш йўналишини танланг">
+    <button data-action="memory-type" data-type="asma" role="tab" aria-selected="${memoryType === "asma"}" class="${memoryType === "asma" ? "selected" : ""}"><span class="memory-tab-title">Аллоҳнинг 99 исми</span><span class="memory-tab-caption">Асмоул ҳусно</span></button>
+    <button data-action="memory-type" data-type="pirs" role="tab" aria-selected="${memoryType === "pirs"}" class="${memoryType === "pirs" ? "selected" : ""}"><span class="memory-tab-title">40 пир</span><span class="memory-tab-caption">Пирлар силсиласи</span></button>
   </div>`;
 }
 
+function memoryMethodTabs(type, selected = selectedMemoryMethod(type)) {
+  const title = type === "pirs" ? "40 пирни ёдлаш усули" : "99 исмни ёдлаш усули";
+  return `<div class="memory-method-heading">${title}</div>
+    <div class="memory-method-tabs" role="tablist" aria-label="${title}">
+      <button data-action="memory-method" data-type="${type}" data-method="quota" role="tab" aria-selected="${selected === "quota"}" class="${selected === "quota" ? "selected" : ""}">Кунлик меъёр</button>
+      <button data-action="memory-method" data-type="${type}" data-method="stages" role="tab" aria-selected="${selected === "stages"}" class="${selected === "stages" ? "selected" : ""}">Босқичма-босқич</button>
+    </div>`;
+}
+
+function renderStageMemoryItem(type, index, isComplete, isCurrent) {
+  const item = memoryData(type)[index];
+  if (!item) return "";
+  const status = isComplete ? "✓ Ёдланган" : isCurrent ? "Ҳозирги вазифа" : "Кейинги навбат";
+  return `<div class="memorize-item stage-item ${isComplete ? "is-done" : isCurrent ? "is-current" : ""}">
+    <span class="item-number">${item.number}</span>
+    <div class="item-detail">${type === "asma" ? `<div class="arabic">${escapeHtml(item.arabic)}</div>` : ""}<strong>${escapeHtml(memoryItemName(type, item))}</strong><small>${escapeHtml(memoryItemSubline(type, item))}</small></div>
+    <span class="stage-status">${status}</span>
+  </div>`;
+}
+
+function renderStageMemoryPlan(type, meta, memory, session) {
+  const all = memoryData(type);
+  const noun = type === "pirs" ? "пир" : "исм";
+  const methodDescription = type === "pirs"
+    ? "40 пир 5 тадан 8 босқичга бўлинган. Ҳар бир босқични ёдлаб, кейинги босқичга ўтинг."
+    : "99 исм 5 тадан босқичларга бўлинган. Охирги босқичда 4 та исм бор.";
+  const completed = completedSet(type);
+  const stageCount = Math.ceil(all.length / 5);
+  const nextIndex = all.findIndex((_, index) => !completed.has(index));
+  if (nextIndex < 0) {
+    return `${pageIntro("ЁДЛАШ ДАСТУРИ", `${all.length} та ${noun} ёдланди`, "Барча босқичлар якунланди. Аллоҳ қабул қилсин.")}${memoryTabs()}${memoryMethodTabs(type, "stages")}<div class="empty-box"><strong>${stageCount} / ${stageCount} босқич</strong><p>${all.length} / ${all.length} та ${noun} ёдланган деб белгиланди.</p></div>`;
+  }
+  const stageStart = Math.floor(nextIndex / 5) * 5;
+  const stageNumber = Math.floor(stageStart / 5) + 1;
+  const stageIndexes = all.map((_, index) => index).filter((index) => index >= stageStart && index < stageStart + 5);
+  const stageDone = stageIndexes.filter((index) => completed.has(index)).length;
+  const currentIndex = stageIndexes.find((index) => !completed.has(index));
+  const rows = stageIndexes.map((index) => renderStageMemoryItem(type, index, completed.has(index), index === currentIndex)).join("");
+  const startNumber = stageStart + 1;
+  const endNumber = Math.min(stageStart + 5, all.length);
+  return `${pageIntro("ЁДЛАШ ДАСТУРИ", `${all.length} та ${noun}ни босқичма-босқич ёдланг`, methodDescription)}
+    ${memoryTabs()}
+    ${memoryMethodTabs(type, "stages")}
+    <section class="paper-card memory-plan stage-plan">
+      <div class="stage-overview"><div><div class="section-label">${stageNumber}-БОСҚИЧ · ${stageCount} БОСҚИЧДАН</div><h2>№ ${startNumber}–${endNumber}</h2></div><span class="stage-count-pill">${stageIndexes.length} та ${noun}</span></div>
+      <div class="quota-row stage-quota-row"><div><span>Ёдда қолгани</span><strong>${memory.completed.length} / ${all.length}</strong></div><span>${stageDone} / ${stageIndexes.length} ${noun} ёдланган</span></div>
+      <div class="stage-progress" role="progressbar" aria-label="${stageNumber}-босқичдаги ёдланган ${noun}лар" aria-valuemin="0" aria-valuemax="${stageIndexes.length}" aria-valuenow="${stageDone}"><span style="width:${stageDone / stageIndexes.length * 100}%"></span></div>
+      <p class="small-note stage-explainer">Аввал шу босқичдаги ${stageIndexes.length} та ${noun}ни ўрганинг. Имтиҳонда тўғри айтилганлари рўйхатда белги билан қолади; адашилганлари такрорланади.</p>
+      <div class="section-label stage-list-heading">${stageNumber}-босқич рўйхати</div>
+      <div class="memorize-list stage-list">${rows}</div>
+      ${session.items.length ? `<div class="button-row"><button class="primary-button gold wide" data-action="memory-study">${stageDone ? "Қолган бандларни ёдлаш" : `${stageNumber}-босқични бошлаш`} <span>→</span></button></div>` : ""}
+      <div class="stage-how"><strong>Қандай ишлайди?</strong><span>${stageIndexes.length} та ${noun}ни ўрганинг</span><b>→</b><span>ёддан текширинг</span><b>→</b><span>кейинги босқич очилади</span></div>
+    </section>
+    ${type === "asma" ? `<p class="small-note" style="margin:12px 3px">Кириллча ўқилиши талаффузга ёрдамчи. Арабча талаффузни устоздан эшитиб текширинг.</p><div class="source-box">${escapeHtml(asmaData.source_note)}<br><br>${asmaData.sources.map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.label)}</a>`).join(" · ")}</div>` : ""}`;
+}
+
 function renderMemoryPlan(type, meta, memory, session, remaining) {
+  if (selectedMemoryMethod(type) === "stages") return renderStageMemoryPlan(type, meta, memory, session);
   const all = memoryData(type);
   const batchList = session.items.map((index) => renderMemoryItem(type, index, true)).join("");
   return `${pageIntro("ЁДЛАШ ДАСТУРИ", "Ўз меъёрингизни танланг", "Қобилиятингиз ва вақтингизга мос кунлик миқдорни белгиланг. Кейин ўзингизни синаб кўринг.")}
     ${memoryTabs()}
+    ${memoryMethodTabs(type, "quota")}
     <section class="paper-card memory-plan">
       <div class="section-label">${escapeHtml(meta.title)}</div>
       <div class="quota-row"><div><span>Ёдда қолгани</span><strong>${memory.completed.length} / ${all.length}</strong></div><span>${escapeHtml(meta.short)} рўйхати</span></div>
@@ -736,12 +820,18 @@ function renderMemoryResult(type, meta, memory, session) {
   const result = session.result || { passed: false, misses: [] };
   const completed = memory.completed.length;
   const unresolved = result.misses.map((index) => renderMemoryItem(type, index, true)).join("");
-  return `${pageIntro("ИМТИҲОН НАТИЖАСИ", result.passed ? "Бугунги меъёр бажарилди" : "Қайта такрорлаш учун", result.passed ? "Ёдлаганларингиз белгиланди. Кейинги меъёр эртага очилади." : "Адашилган бандлар кейинги уринишда яна чиқади.")}
+  const stageMethod = session.method === "stages";
+  const passedTitle = stageMethod ? "Босқич бажарилди" : "Бугунги меъёр бажарилди";
+  const passedCopy = stageMethod
+    ? (completed >= memoryData(type).length ? "Барча босқичлар якунланди. Аллоҳ қабул қилсин." : "Ёдланганлар рўйхатда белгиланди. Кейинги босқичга ўтиб давом этинг.")
+    : "Ёдлаганларингиз белгиланди. Кейинги меъёр эртага очилади.";
+  return `${pageIntro("ИМТИҲОН НАТИЖАСИ", result.passed ? passedTitle : "Қайта такрорлаш учун", result.passed ? passedCopy : "Адашилган бандлар кейинги уринишда яна чиқади.")}
     ${memoryTabs()}
+    ${memoryMethodTabs(type)}
     <section class="paper-card result-card">
       <div class="section-label">Ёдлангани</div><h2 class="study-name">${completed} / ${memoryData(type).length}</h2>
-      ${result.passed ? `<div class="complete-banner"><span>✦</span><span>Бугунги ${session.items.length} та ${escapeHtml(meta.noun)} имтиҳондан ўтди.</span></div>` : `<div class="memorize-list">${unresolved}</div><div class="button-row"><button class="primary-button gold wide" data-action="memory-retry">Қайта имтиҳон қилиш</button></div>`}
-      <div class="button-row"><button class="secondary-button wide" data-action="memory-plan">Режага қайтиш</button></div>
+      ${result.passed ? `<div class="complete-banner"><span>✦</span><span>${stageMethod ? `${session.stageNumber || "Кейинги"}-босқичдаги` : "Бугунги"} ${session.items.length} та ${escapeHtml(meta.noun)} имтиҳондан ўтди.</span></div>` : `<div class="memorize-list">${unresolved}</div><div class="button-row"><button class="primary-button gold wide" data-action="memory-retry">Қайта имтиҳон қилиш</button></div>`}
+      <div class="button-row"><button class="secondary-button wide" data-action="memory-plan">${stageMethod && result.passed && completed < memoryData(type).length ? "Кейинги босқичга ўтиш" : "Режага қайтиш"}</button></div>
     </section>`;
 }
 
@@ -760,7 +850,9 @@ function renderMemory() {
   if (session.status === "quiz") return renderQuiz(type, meta, session);
   if (session.status === "result") return renderMemoryResult(type, meta, memory, session);
   if (session.status === "complete" || remaining <= 0) {
-    return `${pageIntro("ЁДЛАШ ДАСТУРИ", "Рўйхат якунланди", "Барча бандлар ёдланган деб белгиланди.")}${memoryTabs()}<div class="empty-box"><strong>${escapeHtml(meta.title)}</strong><p>${data.length} / ${data.length} та банд бажарилди.</p></div>`;
+    const stageCount = Math.ceil(data.length / 5);
+    const stageCopy = selectedMemoryMethod(type) === "stages" ? `<div class="section-label">${stageCount} / ${stageCount} босқич</div>` : "";
+    return `${pageIntro("ЁДЛАШ ДАСТУРИ", "Рўйхат якунланди", "Барча бандлар ёдланган деб белгиланди.")}${memoryTabs()}${memoryMethodTabs(type)}<div class="empty-box">${stageCopy}<strong>${escapeHtml(meta.title)}</strong><p>${data.length} / ${data.length} та банд бажарилди.</p></div>`;
   }
   return renderMemoryPlan(type, meta, memory, session, remaining);
 }
@@ -1098,6 +1190,15 @@ app.addEventListener("click", (event) => {
     sendReminderTimes();
   } else if (action === "memory-type") {
     memoryType = button.dataset.type;
+    render();
+  } else if (action === "memory-method") {
+    const type = button.dataset.type;
+    const method = button.dataset.method;
+    if (!["pirs", "asma"].includes(type) || !["stages", "quota"].includes(method)) return;
+    memoryType = type;
+    memoryStore(type).method = method;
+    createMemorySession(type);
+    saveState();
     render();
   } else if (action === "memory-study") {
     const session = getMemorySession(memoryType);
