@@ -639,10 +639,10 @@ function memoryMethodTabs(type, selected = selectedMemoryMethod(type)) {
     </div>`;
 }
 
-function renderStageMemoryItem(type, index, isComplete, isCurrent) {
+function renderStageMemoryItem(type, index, isComplete, isCurrent, queuedLabel = "Кейинги навбат") {
   const item = memoryData(type)[index];
   if (!item) return "";
-  const status = isComplete ? "✓ Ёдланган" : isCurrent ? "Ҳозирги вазифа" : "Кейинги навбат";
+  const status = isComplete ? "✓ Ёдланган" : isCurrent ? "Ҳозирги вазифа" : queuedLabel;
   return `<div class="memorize-item stage-item ${isComplete ? "is-done" : isCurrent ? "is-current" : ""}">
     <span class="item-number">${item.number}</span>
     <div class="item-detail">${type === "asma" ? `<div class="arabic">${escapeHtml(item.arabic)}</div>` : ""}<strong>${escapeHtml(memoryItemName(type, item))}</strong><small>${escapeHtml(memoryItemSubline(type, item))}</small></div>
@@ -667,7 +667,25 @@ function renderStageMemoryPlan(type, meta, memory, session) {
   const stageIndexes = all.map((_, index) => index).filter((index) => index >= stageStart && index < stageStart + 5);
   const stageDone = stageIndexes.filter((index) => completed.has(index)).length;
   const currentIndex = stageIndexes.find((index) => !completed.has(index));
-  const rows = stageIndexes.map((index) => renderStageMemoryItem(type, index, completed.has(index), index === currentIndex)).join("");
+  let rows;
+  if (type === "pirs") {
+    rows = Array.from({ length: stageCount }, (_, groupIndex) => {
+      const groupStart = groupIndex * 5;
+      const groupIndexes = all.map((_, index) => index).filter((index) => index >= groupStart && index < groupStart + 5);
+      const groupDone = groupIndexes.filter((index) => completed.has(index)).length;
+      const groupHeading = `<div class="stage-group-heading"><span>${groupIndex + 1}-босқич</span><b>${groupDone} / ${groupIndexes.length} ёдланган</b></div>`;
+      const groupRows = groupIndexes.map((index) => renderStageMemoryItem(
+        type,
+        index,
+        completed.has(index),
+        index === nextIndex,
+        index < stageStart ? "Ёдланган" : index < stageStart + 5 ? "Навбатда" : "Кейинги босқич",
+      )).join("");
+      return `${groupHeading}${groupRows}`;
+    }).join("");
+  } else {
+    rows = stageIndexes.map((index) => renderStageMemoryItem(type, index, completed.has(index), index === currentIndex)).join("");
+  }
   const startNumber = stageStart + 1;
   const endNumber = Math.min(stageStart + 5, all.length);
   return `${pageIntro("ЁДЛАШ ДАСТУРИ", `${all.length} та ${noun}ни босқичма-босқич ёдланг`, methodDescription)}
@@ -678,7 +696,7 @@ function renderStageMemoryPlan(type, meta, memory, session) {
       <div class="quota-row stage-quota-row"><div><span>Ёдда қолгани</span><strong>${memory.completed.length} / ${all.length}</strong></div><span>${stageDone} / ${stageIndexes.length} ${noun} ёдланган</span></div>
       <div class="stage-progress" role="progressbar" aria-label="${stageNumber}-босқичдаги ёдланган ${noun}лар" aria-valuemin="0" aria-valuemax="${stageIndexes.length}" aria-valuenow="${stageDone}"><span style="width:${stageDone / stageIndexes.length * 100}%"></span></div>
       <p class="small-note stage-explainer">Аввал шу босқичдаги ${stageIndexes.length} та ${noun}ни ўрганинг. Имтиҳонда тўғри айтилганлари рўйхатда белги билан қолади; адашилганлари такрорланади.</p>
-      <div class="section-label stage-list-heading">${stageNumber}-босқич рўйхати</div>
+      <div class="section-label stage-list-heading">${type === "pirs" ? "ПИРЛАРНИНГ ТЎЛИҚ РЎЙХАТИ · 1–40" : `${stageNumber}-босқич рўйхати`}</div>
       <div class="memorize-list stage-list">${rows}</div>
       ${session.items.length ? `<div class="button-row"><button class="primary-button gold wide" data-action="memory-study">${stageDone ? "Қолган бандларни ёдлаш" : `${stageNumber}-босқични бошлаш`} <span>→</span></button></div>` : ""}
       <div class="stage-how"><strong>Қандай ишлайди?</strong><span>${stageIndexes.length} та ${noun}ни ўрганинг</span><b>→</b><span>ёддан текширинг</span><b>→</b><span>кейинги босқич очилади</span></div>
