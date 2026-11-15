@@ -214,7 +214,15 @@ function escapeHtml(value) {
 }
 
 function textWithBreaks(value) {
-  return escapeHtml(value)
+  const escaped = escapeHtml(value);
+  const withVerseBlocks = escaped.replace(
+    /\*\*([^\n*]+)\*\*\n\n\*\*([^\n*]+)\*\*/g,
+    (match, arabic, reading) => {
+      if (!/[\u0600-\u06FF]/.test(arabic)) return match;
+      return `<div class="lesson-verse-block"><div class="lesson-verse-arabic" dir="rtl" lang="ar"><strong>${arabic}</strong></div><div class="lesson-verse-reading"><strong>${reading}</strong></div></div>`;
+    },
+  );
+  return withVerseBlocks
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replaceAll("\n", "<br>");
 }
