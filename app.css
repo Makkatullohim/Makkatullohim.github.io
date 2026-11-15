@@ -58,6 +58,9 @@ button { -webkit-tap-highlight-color: transparent; }
 .step-pill { border-radius: 99px; padding: 7px 10px; color: #e6d6ae; background: var(--forest-2); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
 .lesson-title { margin: 0 0 14px; color: var(--ink); font: 600 clamp(25px, 7vw, 34px)/1.16 "Noto Serif", Georgia, serif; }
 .lesson-copy { color: #334d44; font: 15px/1.8 "Noto Serif", Georgia, serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lesson-verse-block { margin: 0 0 1.15em; }
+.lesson-verse-arabic { direction: rtl; text-align: right; font-size: 1.15em; line-height: 1.8; }
+.lesson-verse-reading { margin-top: 0.75em; text-align: left; }
 .lesson-copy[dir="rtl"] { text-align: right; }
 .reflection-note { display: flex; gap: 10px; align-items: flex-start; margin: 18px 0 0; padding: 12px 13px; border-radius: 13px; color: #556a5d; background: #f0ecdf; font-size: 12px; line-height: 1.55; }
 .reflection-note span { color: var(--gold-dark); font-size: 17px; line-height: 1; }
