@@ -684,7 +684,7 @@ function renderStageMemoryPlan(type, meta, memory, session) {
       <div class="quota-row stage-quota-row"><div><span>Ёдда қолгани</span><strong>${memory.completed.length} / ${all.length}</strong></div><span>${stageDone} / ${stageIndexes.length} ${noun} ёдланган</span></div>
       <div class="stage-progress" role="progressbar" aria-label="${stageNumber}-босқичдаги ёдланган ${noun}лар" aria-valuemin="0" aria-valuemax="${stageIndexes.length}" aria-valuenow="${stageDone}"><span style="width:${stageDone / stageIndexes.length * 100}%"></span></div>
       <p class="small-note stage-explainer">Аввал шу босқичдаги ${stageIndexes.length} та ${noun}ни ўрганинг. Имтиҳонда тўғри айтилганлари рўйхатда белги билан қолади; адашилганлари такрорланади.</p>
-      <div class="section-label stage-list-heading">${type === "pirs" ? `ПИРЛАРНИНГ ТЎЛИҚ РЎЙХАТИ · 1–${data.length}` : `${stageNumber}-босқич рўйхати`}</div>
+      <div class="section-label stage-list-heading">${type === "pirs" ? `ПИРЛАРНИНГ ТЎЛИҚ РЎЙХАТИ · 1–${all.length}` : `${stageNumber}-босқич рўйхати`}</div>
       <div class="memorize-list stage-list">${rows}</div>
       ${session.items.length ? `<div class="button-row"><button class="primary-button gold wide" data-action="memory-study">${stageDone ? "Қолган бандларни ёдлаш" : `${stageNumber}-босқични бошлаш`} <span>→</span></button></div>` : ""}
       <div class="stage-how"><strong>Қандай ишлайди?</strong><span>${stageIndexes.length} та ${noun}ни ўрганинг</span><b>→</b><span>ёддан текширинг</span><b>→</b><span>кейинги босқич очилади</span></div>
