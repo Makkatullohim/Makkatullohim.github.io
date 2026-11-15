@@ -214,7 +214,9 @@ function escapeHtml(value) {
 }
 
 function textWithBreaks(value) {
-  return escapeHtml(value).replaceAll("\n", "<br>");
+  return escapeHtml(value)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replaceAll("\n", "<br>");
 }
 
 function showToast(message) {
