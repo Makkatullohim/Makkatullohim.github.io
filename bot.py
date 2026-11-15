@@ -1,7 +1,5 @@
 import json
-import asyncio
 import os
-import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
@@ -21,8 +19,6 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
-    MessageHandler,
-    filters,
 )
 from prayer_times import start_prayer_api_server
 
@@ -33,7 +29,6 @@ TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 DB_PATH = os.environ.get("BOT_DB_PATH", str(BASE_DIR / "bot_data.sqlite3"))
 TIMEZONE = ZoneInfo(os.environ.get("BOT_TIMEZONE", "Asia/Tashkent"))
 MINI_APP_URL = os.environ.get("MINI_APP_URL", "").strip()
-TIME_PATTERN = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 
 
 @contextmanager
@@ -154,7 +149,6 @@ def menu_keyboard():
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("📿 Бугунги вирд", callback_data="today")],
-            [InlineKeyboardButton("⏰ Эслатма вақтлари", callback_data="reminders")],
             [InlineKeyboardButton("📖 Қўлланма", callback_data="guide")],
         ]
     )
@@ -164,7 +158,7 @@ def mini_app_keyboard():
     if not MINI_APP_URL.startswith("https://"):
         return None
     button = KeyboardButton(
-        text="✨ ЗИКР НУРИ",
+        text="☀️ Зикр нури",
         web_app=WebAppInfo(url=MINI_APP_URL),
     )
     return ReplyKeyboardMarkup([[button]], resize_keyboard=True, is_persistent=True)
@@ -201,7 +195,6 @@ def today_keyboard(user_id, day):
             row = []
     if row:
         rows.append(row)
-    rows.append([InlineKeyboardButton("⏰ Эслатма вақтлари", callback_data="reminders")])
     rows.append([InlineKeyboardButton("🏠 Меню", callback_data="menu")])
     return InlineKeyboardMarkup(rows)
 
@@ -278,7 +271,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     app_keyboard = mini_app_keyboard()
     if app_keyboard:
         await update.message.reply_text(
-            "Эслатма вақтларини киритиш учун қуйидаги тугма орқали иловани очинг.",
+            "Зикрларни ўқиш ва санаш учун қуйидаги тугмани босинг.",
             reply_markup=app_keyboard,
         )
     elif MINI_APP_URL:
@@ -305,104 +298,9 @@ async def delete_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         connection.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
         connection.execute("DELETE FROM reminders WHERE user_id = ?", (user_id,))
     await update.message.reply_text(
-        "Саноқ ва эслатма вақтларингиз ўчирилди.",
+        "Кунлик саноқ маълумотларингиз ўчирилди.",
         reply_markup=menu_keyboard(),
     )
-
-
-async def reminders_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    with connect_db() as connection:
-        rows = connection.execute(
-            "SELECT lesson_index, reminder_time FROM reminders WHERE user_id = ? ORDER BY lesson_index",
-            (user_id,),
-        ).fetchall()
-    if rows:
-        lines = ["⏰ Кунлик эслатма вақтларингиз (Тошкент вақти):", ""]
-        lines.extend(
-            f"{row['lesson_index'] + 1}. {LESSONS[row['lesson_index']]['title']} — {row['reminder_time']}"
-            for row in rows
-        )
-        text = "\n".join(lines)
-    else:
-        text = "Ҳали эслатма вақти белгиланмаган. Иловани очиб, керакли дарсларга вақт қўйинг."
-    if MINI_APP_URL:
-        text += "\n\nВақтларни ўзгартириш учун «Вирд вақтларини белгилаш» тугмасидан фойдаланинг."
-    await update.message.reply_text(text, reply_markup=menu_keyboard())
-
-
-async def web_app_data_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    try:
-        payload = json.loads(update.message.web_app_data.data)
-        if (
-            not isinstance(payload, dict)
-            or payload.get("type") != "reminders"
-            or not isinstance(payload.get("times"), dict)
-        ):
-            raise ValueError("Нотўғри маълумот")
-        reminders = {}
-        for raw_index, raw_time in payload["times"].items():
-            index = int(raw_index)
-            value = str(raw_time)
-            if not 0 <= index < len(LESSONS) or not TIME_PATTERN.fullmatch(value):
-                raise ValueError("Дарс ёки вақт нотўғри")
-            reminders[index] = value
-    except (TypeError, ValueError, json.JSONDecodeError):
-        await update.message.reply_text("Вақтлар сақланмади. Иловани очиб, соатларни қайта текширинг.")
-        return
-
-    with connect_db() as connection:
-        ensure_user(connection, user_id)
-        connection.execute("DELETE FROM reminders WHERE user_id = ?", (user_id,))
-        connection.executemany(
-            "INSERT INTO reminders (user_id, lesson_index, reminder_time, last_sent_date) VALUES (?, ?, ?, NULL)",
-            [(user_id, index, value) for index, value in reminders.items()],
-        )
-
-    if reminders:
-        lines = ["Эслатмалар сақланди. Улар ҳар куни Тошкент вақти бўйича келади:", ""]
-        lines.extend(
-            f"{index + 1}. {LESSONS[index]['title']} — {value}"
-            for index, value in sorted(reminders.items())
-        )
-        text = "\n".join(lines)
-    else:
-        text = "Барча эслатма вақтлари ўчирилди."
-    await update.message.reply_text(text, reply_markup=menu_keyboard())
-
-
-async def reminder_loop(application: Application):
-    while True:
-        now = datetime.now(TIMEZONE)
-        day = now.date().isoformat()
-        current_time = now.strftime("%H:%M")
-        with connect_db() as connection:
-            due = connection.execute(
-                """SELECT user_id, lesson_index FROM reminders
-                   WHERE reminder_time = ? AND (last_sent_date IS NULL OR last_sent_date != ?)""",
-                (current_time, day),
-            ).fetchall()
-        for row in due:
-            index = row["lesson_index"]
-            try:
-                await application.bot.send_message(
-                    chat_id=row["user_id"],
-                    text=(
-                        f"⏰ {LESSONS[index]['title']} учун белгиланган вақт бўлди.\n\n"
-                        "Бугунги дарсни ўқиш ва саноқни юритиш учун /today ни очинг."
-                    ),
-                )
-            except Exception:
-                # Keep the reminder eligible for another attempt during this minute.
-                continue
-            with connect_db() as connection:
-                connection.execute(
-                    """UPDATE reminders SET last_sent_date = ?
-                       WHERE user_id = ? AND lesson_index = ?""",
-                    (day, row["user_id"], index),
-                )
-        await asyncio.sleep(15)
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -422,23 +320,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         index = int(data.split(":", 1)[1])
         if 0 <= index < len(LESSONS):
             await show_today_lesson(query, user_id, index)
-        await query.answer()
-    elif data == "reminders":
-        with connect_db() as connection:
-            rows = connection.execute(
-                "SELECT lesson_index, reminder_time FROM reminders WHERE user_id = ? ORDER BY lesson_index",
-                (user_id,),
-            ).fetchall()
-        if rows:
-            lines = ["⏰ Кунлик эслатма вақтларингиз (Тошкент вақти):", ""]
-            lines.extend(
-                f"{row['lesson_index'] + 1}. {LESSONS[row['lesson_index']]['title']} — {row['reminder_time']}"
-                for row in rows
-            )
-            text = "\n".join(lines)
-        else:
-            text = "Ҳали эслатма вақти белгиланмаган. Иловани очиб, керакли дарсларга вақт қўйинг."
-        await query.edit_message_text(text, reply_markup=menu_keyboard())
         await query.answer()
     elif data == "guide":
         await query.edit_message_text(
@@ -488,14 +369,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "/today — бугунги 9 дарсни очиш\n"
         "/guide — қўлланмадан дарс танлаш\n"
-        "/reminders — белгиланган эслатма вақтларини кўриш\n"
-        "/delete_data — саноқ ва эслатмаларни ўчириш",
+        "/delete_data — кунлик саноқларни ўчириш",
         reply_markup=menu_keyboard(),
     )
-
-
-async def post_init(application: Application):
-    application.create_task(reminder_loop(application), name="daily-reminders")
 
 
 def main():
@@ -505,14 +381,12 @@ def main():
         )
     init_db()
     start_prayer_api_server()
-    application = Application.builder().token(TOKEN).post_init(post_init).build()
+    application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("today", today_command))
     application.add_handler(CommandHandler("guide", guide_command))
-    application.add_handler(CommandHandler("reminders", reminders_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("delete_data", delete_data))
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data_handler))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.run_polling()
 

@@ -25,7 +25,7 @@ let asmaData;
 let nasihatData = [];
 let activeNasihatIndex = 0;
 let state;
-let route = "today";
+let route = "tariqat";
 let prayerView = "today";
 let prayerMonth = localDay().slice(0, 7);
 let selectedHijriMonth = "";
@@ -527,7 +527,7 @@ function memoryData(type) {
 
 function memoryMeta(type) {
   return type === "pirs"
-    ? { title: "Пирлар силсиласи", short: "Пирлар", max: 40, noun: "ҳалқа" }
+    ? { title: "Пирлар силсиласи", short: "Пирлар", max: pirData.chain.length, noun: "ҳалқа" }
     : { title: "Асмоул ҳусно", short: "Аллоҳнинг 99 исми", max: 99, noun: "исм" };
 }
 
@@ -614,12 +614,12 @@ function renderMemoryItem(type, index, compact = false) {
 function memoryTabs() {
   return `<div class="subnav memory-tabs" role="tablist" aria-label="Ёдлаш йўналишини танланг">
     <button data-action="memory-type" data-type="asma" role="tab" aria-selected="${memoryType === "asma"}" class="${memoryType === "asma" ? "selected" : ""}"><span class="memory-tab-title">Аллоҳнинг 99 исми</span><span class="memory-tab-caption">Асмоул ҳусно</span></button>
-    <button data-action="memory-type" data-type="pirs" role="tab" aria-selected="${memoryType === "pirs"}" class="${memoryType === "pirs" ? "selected" : ""}"><span class="memory-tab-title">40 пир</span><span class="memory-tab-caption">Пирлар силсиласи</span></button>
+    <button data-action="memory-type" data-type="pirs" role="tab" aria-selected="${memoryType === "pirs"}" class="${memoryType === "pirs" ? "selected" : ""}"><span class="memory-tab-title">41 пир</span><span class="memory-tab-caption">Пирлар силсиласи</span></button>
   </div>`;
 }
 
 function memoryMethodTabs(type, selected = selectedMemoryMethod(type)) {
-  const title = type === "pirs" ? "40 пирни ёдлаш усули" : "99 исмни ёдлаш усули";
+  const title = type === "pirs" ? "41 пирни ёдлаш усули" : "99 исмни ёдлаш усули";
   return `<div class="memory-method-heading">${title}</div>
     <div class="memory-method-tabs" role="tablist" aria-label="${title}">
       <button data-action="memory-method" data-type="${type}" data-method="quota" role="tab" aria-selected="${selected === "quota"}" class="${selected === "quota" ? "selected" : ""}"><strong>Кунлик меъёр</strong><small>Кунига ёдлайдиган исмлар сонини ўзингиз белгиланг.</small></button>
@@ -642,7 +642,7 @@ function renderStageMemoryPlan(type, meta, memory, session) {
   const all = memoryData(type);
   const noun = type === "pirs" ? "пир" : "исм";
   const methodDescription = type === "pirs"
-    ? "40 пир 5 тадан 8 босқичга бўлинган. Ҳар бир босқични ёдлаб, кейинги босқичга ўтинг."
+    ? "41 пир 5 тадан босқичларга бўлинган. Ҳар бир босқични ёдлаб, кейинги босқичга ўтинг."
     : "99 исм 5 тадан босқичларга бўлинган. Охирги босқичда 4 та исм бор.";
   const completed = completedSet(type);
   const stageCount = Math.ceil(all.length / 5);
@@ -684,7 +684,7 @@ function renderStageMemoryPlan(type, meta, memory, session) {
       <div class="quota-row stage-quota-row"><div><span>Ёдда қолгани</span><strong>${memory.completed.length} / ${all.length}</strong></div><span>${stageDone} / ${stageIndexes.length} ${noun} ёдланган</span></div>
       <div class="stage-progress" role="progressbar" aria-label="${stageNumber}-босқичдаги ёдланган ${noun}лар" aria-valuemin="0" aria-valuemax="${stageIndexes.length}" aria-valuenow="${stageDone}"><span style="width:${stageDone / stageIndexes.length * 100}%"></span></div>
       <p class="small-note stage-explainer">Аввал шу босқичдаги ${stageIndexes.length} та ${noun}ни ўрганинг. Имтиҳонда тўғри айтилганлари рўйхатда белги билан қолади; адашилганлари такрорланади.</p>
-      <div class="section-label stage-list-heading">${type === "pirs" ? "ПИРЛАРНИНГ ТЎЛИҚ РЎЙХАТИ · 1–40" : `${stageNumber}-босқич рўйхати`}</div>
+      <div class="section-label stage-list-heading">${type === "pirs" ? `ПИРЛАРНИНГ ТЎЛИҚ РЎЙХАТИ · 1–${data.length}` : `${stageNumber}-босқич рўйхати`}</div>
       <div class="memorize-list stage-list">${rows}</div>
       ${session.items.length ? `<div class="button-row"><button class="primary-button gold wide" data-action="memory-study">${stageDone ? "Қолган бандларни ёдлаш" : `${stageNumber}-босқични бошлаш`} <span>→</span></button></div>` : ""}
       <div class="stage-how"><strong>Қандай ишлайди?</strong><span>${stageIndexes.length} та ${noun}ни ўрганинг</span><b>→</b><span>ёддан текширинг</span><b>→</b><span>кейинги босқич очилади</span></div>
@@ -885,28 +885,25 @@ function renderPersonList() {
     <button class="person-row ${index === selectedPerson ? "selected" : ""}" data-action="select-person" data-person="${index}">
       <span class="item-number">${person.number}</span><span><strong>${escapeHtml(person.name)}</strong><small>${escapeHtml(person.locations.map((point) => point.label).join(" · "))}</small></span><span class="chevron">›</span>
     </button>`).join("");
-  const continuation = pirData.continuation;
-  return `${rows}
-    <button class="person-row ${selectedPerson === 40 ? "selected" : ""}" data-action="select-person" data-person="40">
-      <span class="item-number">41</span><span><strong>${escapeHtml(continuation.name)}</strong><small>${escapeHtml(continuation.locations.map((point) => point.label).join(" · "))}</small></span><span class="chevron">›</span>
-    </button>`;
+  return rows;
 }
 
 function renderPlaces() {
   document.getElementById("today-date").textContent = formatDate();
-  const selected = selectedPerson === 40 ? pirData.continuation : pirData.chain[selectedPerson];
+  const selected = pirData.chain[selectedPerson];
   const places = selected?.locations || [];
-  return `${pageIntro("СИЛСИЛА ХАРИТАСИ", "40 пирнинг кетма-кетлиги", "Харитада рақамни босинг ёки пастдаги рўйхатдан пирни танланг.")}
-    <div class="chain-summary"><div><strong>Ҳолидия–Нақшбандия силсиласи</strong><br><span>Устоз-шогирд кетма-кетлиги: 1 дан 40 гача</span></div><span class="chain-count">1 → 40</span></div>
+  const pirCount = pirData.chain.length;
+  return `${pageIntro("СИЛСИЛА ХАРИТАСИ", `${pirCount} пирнинг кетма-кетлиги`, "Харитада рақамни босинг ёки пастдаги рўйхатдан пирни танланг.")}
+    <div class="chain-summary"><div><strong>Ҳожагон–Нақшбандия силсиласи</strong><br><span>Устоз-шогирд кетма-кетлиги: 1 дан ${pirCount} гача</span></div><span class="chain-count">1 → ${pirCount}</span></div>
     <section class="map-card">
-      <div class="map-top"><strong>40 пир — кетма-кет харита</strong><span>1–40</span></div>
+      <div class="map-top"><strong>${pirCount} пир — кетма-кет харита</strong><span>1–${pirCount}</span></div>
       <div id="map" role="application" aria-label="Силсила жойлари харитаси"></div>
       <div class="map-selected"><h3>${selected ? `${selected.number || 41}. ${escapeHtml(selected.name)}` : "Пирни танланг"}</h3><div class="location-pills">${places.map((place, index) => `<button class="location-pill" data-action="select-place" data-place="${index}">${escapeHtml(place.label)}</button>`).join("")}</div>
       <div class="button-row"><a class="secondary-button" href="https://www.openstreetmap.org/?mlat=${places[selectedPlace]?.lat || places[0]?.lat || 39}&mlon=${places[selectedPlace]?.lon || places[0]?.lon || 65}#map=5/${places[selectedPlace]?.lat || places[0]?.lat || 39}/${places[selectedPlace]?.lon || places[0]?.lon || 65}" target="_blank" rel="noopener">Харитани катта очиш ↗</a></div></div>
       <div class="map-note">Чизиқ силсиладаги устоз-шогирд тартибини кўрсатади, аниқ сафар йўлини эмас. Ҳар бир рақам пир учун берилган асосий тахминий жойга қўйилган; бошқа жойлари пастдаги рўйхатда бор. ${escapeHtml(pirData.source_note)}</div>
     </section>
     <div class="person-list">${renderPersonList()}</div>
-    <div class="source-box"><strong>Манбалар</strong><br>${pirData.sources.map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.label)}</a>`).join(" · ")}<br><br>41-нуқта силсиладаги 40 ҳалқага қўшилмаган; алоҳида давом сифатида берилган.</div>`;
+    <div class="source-box"><strong>Манбалар</strong><br>${pirData.sources.map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.label)}</a>`).join(" · ")}<br><br>Пирлар тартиби сиз юборган «Силсилаи Шариф» рўйхати асосида кўрсатилди.</div>`;
 }
 
 function addMap() {
@@ -1010,7 +1007,7 @@ function addMap() {
         `<div><strong>${person.number}. ${escapeHtml(person.name)}</strong><br>${escapeHtml(place.label)}</div>`
       ).join("<hr>"));
     });
-    const selectedPir = selectedPerson === 40 ? pirData.continuation : chain[selectedPerson];
+    const selectedPir = chain[selectedPerson];
     const selectedLocation = selectedPir?.locations?.[selectedPlace] || selectedPir?.locations?.[0];
     if (selectedLocation) {
       const selectedNumber = selectedPir.number || 41;
@@ -1044,7 +1041,7 @@ function addMap() {
   routePoints.forEach(({ place }) => {
     bounds.push([place.lat, place.lon]);
   });
-  const selectedPir = selectedPerson === 40 ? pirData.continuation : chain[selectedPerson];
+  const selectedPir = chain[selectedPerson];
   const selectedLocation = selectedPir?.locations?.[selectedPlace] || selectedPir?.locations?.[0];
   if (focusPirMapSelection && selectedLocation) {
     leafletMap.setView([selectedLocation.lat, selectedLocation.lon], 9);
@@ -1078,6 +1075,7 @@ function render(keepScroll = false) {
   }
   updateNav();
   if (route === "today") app.innerHTML = renderToday();
+  else if (route === "tariqat") app.innerHTML = `<iframe class="tariqat-frame" title="Бугунги тариқат вазифалари" src="tariqat-vazifalari.html?embed=1"></iframe>`;
   else if (route === "prayers") {
     app.innerHTML = renderPrayerShell();
     loadPrayerView();

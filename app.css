@@ -41,6 +41,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .eyebrow { color: #a8b8a7; font-size: 9px; font-weight: 700; letter-spacing: .16em; }
 .date-chip { margin-left: auto; border: 1px solid rgba(244,239,223,.22); border-radius: 99px; padding: 8px 11px; color: var(--cream); background: rgba(255,255,255,.045); font-size: 11px; white-space: nowrap; }
 #app { min-height: 62vh; }
+.tariqat-frame { display: block; width: 100%; height: min(780px, calc(100dvh - 220px)); min-height: 480px; border: 0; border-radius: 22px; background: var(--paper); box-shadow: var(--shadow); }
 .loading-state { min-height: 45vh; display: grid; align-content: center; justify-items: center; color: #d3ddce; font-size: 13px; }
 .spinner { width: 28px; height: 28px; border: 2px solid rgba(244,239,223,.2); border-top-color: var(--gold); border-radius: 50%; animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -231,7 +232,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .guide-detail { padding: 20px; }
 .guide-detail .lesson-copy { font-size: 14px; }
 
-.bottom-nav { position: fixed; z-index: 500; bottom: 0; left: 50%; display: grid; width: min(100%, 760px); grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 8px 13px calc(8px + var(--safe-bottom)); border-top: 1px solid rgba(245,240,227,.12); background: rgba(13, 39, 36, .94); backdrop-filter: blur(18px); transform: translateX(-50%); }
+.bottom-nav { position: fixed; z-index: 500; bottom: 0; left: 50%; display: grid; width: min(100%, 760px); grid-template-columns: repeat(6, 1fr); gap: 3px; padding: 8px 13px calc(8px + var(--safe-bottom)); border-top: 1px solid rgba(245,240,227,.12); background: rgba(13, 39, 36, .94); backdrop-filter: blur(18px); transform: translateX(-50%); }
 .nav-item { display: flex; min-height: 54px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 12px; color: #8fa397; background: transparent; font-size: 9px; font-weight: 600; cursor: pointer; }
 .nav-item.active { color: var(--gold); background: rgba(211,168,98,.09); }
 .nav-icon { font-size: 18px; line-height: 1.1; }
