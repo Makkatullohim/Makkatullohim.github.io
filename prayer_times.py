@@ -315,8 +315,14 @@ def start_prayer_api_server(bot_token="", admin_ids=None):
     host = os.environ.get("PRAYER_API_HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", os.environ.get("PRAYER_API_PORT", "8000")))
     server = ThreadingHTTPServer((host, port), PrayerAPIHandler)
-    server.bot_token = bot_token
-    server.admin_ids = set(admin_ids or ())
+    server.bot_token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if admin_ids is None:
+        admin_ids = {
+            int(value.strip())
+            for value in os.environ.get("ADMIN_TELEGRAM_IDS", "").split(",")
+            if value.strip().isdigit()
+        }
+    server.admin_ids = set(admin_ids)
     thread = threading.Thread(target=server.serve_forever, daemon=True, name="prayer-times-api")
     thread.start()
     print(f"Prayer times API listening on {host}:{port}")
