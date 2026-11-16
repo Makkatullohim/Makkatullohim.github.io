@@ -325,7 +325,7 @@ async def delete_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         connection.execute("DELETE FROM progress_imports WHERE user_id = ?", (user_id,))
         connection.execute("DELETE FROM progress_operations WHERE user_id = ?", (user_id,))
     await update.message.reply_text(
-        "Профилингиз ва саноқ маълумотларингиз ўчирилди. Умумий бўлимлар статистикасида шахсга боғланмайдиган ҳисоблар сақланиши мумкин.",
+        "Telegram профилингиз ва сервердаги шахсий саноқларингиз ўчирилди. Илованинг бу қурилмадаги маҳаллий маълумотлари қурилмангизда қолади.",
         reply_markup=menu_keyboard(),
     )
 
