@@ -12,6 +12,17 @@ from urllib.parse import parse_qs, urlparse
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
+from webapp_api import (
+    APIError,
+    change_progress,
+    get_admin_stats,
+    get_progress,
+    grant_sync_consent,
+    import_local_progress,
+    record_section_view,
+    validate_init_data,
+)
+
 
 TIMEZONE = ZoneInfo(os.environ.get("BOT_TIMEZONE", "Asia/Tashkent"))
 SOURCE_TEMPLATE = "https://islam.uz/vremyanamazov/27/{month}"
@@ -186,8 +197,8 @@ def get_month(year, month):
 class PrayerAPIHandler(BaseHTTPRequestHandler):
     def _cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Telegram-Init-Data")
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -198,6 +209,19 @@ class PrayerAPIHandler(BaseHTTPRequestHandler):
         request = urlparse(self.path)
         if request.path in ("/", "/health"):
             self._respond(200, {"status": "ok"})
+            return
+        if request.path in ("/api/progress", "/api/admin/stats"):
+            try:
+                user_id = self._authenticated_user()
+                if request.path == "/api/progress":
+                    payload = get_progress(user_id)
+                else:
+                    payload = get_admin_stats(user_id, self.server.admin_ids)
+                self._respond(200, payload, cache_control="no-store")
+            except APIError as error:
+                self._respond(error.status, {"error": str(error)}, cache_control="no-store")
+            except Exception:
+                self._respond(500, {"error": "Серверда хатолик юз берди."}, cache_control="no-store")
             return
         if request.path != "/api/prayer-times":
             self._respond(404, {"error": "Манзил топилмади."})
@@ -212,12 +236,73 @@ class PrayerAPIHandler(BaseHTTPRequestHandler):
             return
         self._respond(200, data)
 
-    def _respond(self, status, payload):
+    def do_POST(self):
+        request = urlparse(self.path)
+        try:
+            user_id = self._authenticated_user()
+            payload = self._read_json()
+            if request.path == "/api/progress/consent":
+                result = grant_sync_consent(user_id)
+            elif request.path == "/api/progress/import":
+                result = import_local_progress(
+                    user_id,
+                    payload.get("day"),
+                    payload.get("counts", {}),
+                )
+            elif request.path == "/api/progress/change":
+                result = change_progress(
+                    user_id,
+                    payload.get("operation_id"),
+                    payload.get("day"),
+                    payload.get("stage"),
+                    payload.get("amount"),
+                )
+            elif request.path == "/api/progress/reset":
+                result = change_progress(
+                    user_id,
+                    payload.get("operation_id"),
+                    payload.get("day"),
+                    payload.get("stage"),
+                    reset=True,
+                )
+            elif request.path == "/api/analytics/section":
+                result = record_section_view(user_id, payload.get("section"))
+            else:
+                self._respond(404, {"error": "Манзил топилмади."}, cache_control="no-store")
+                return
+            self._respond(200, result, cache_control="no-store")
+        except APIError as error:
+            self._respond(error.status, {"error": str(error)}, cache_control="no-store")
+        except (ValueError, TypeError, json.JSONDecodeError):
+            self._respond(400, {"error": "Сўров маълумотлари нотўғри."}, cache_control="no-store")
+        except Exception:
+            self._respond(500, {"error": "Серверда хатолик юз берди."}, cache_control="no-store")
+
+    def _authenticated_user(self):
+        raw_init_data = self.headers.get("X-Telegram-Init-Data", "")
+        return validate_init_data(raw_init_data, self.server.bot_token)
+
+    def _read_json(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as error:
+            raise APIError(400, "Сўров ҳажми нотўғри.") from error
+        if length < 0 or length > 8192:
+            raise APIError(413, "Сўров ҳажми жуда катта.")
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise APIError(400, "Сўров JSON форматида бўлиши керак.") from error
+        if not isinstance(payload, dict):
+            raise APIError(400, "Сўров маълумотлари объект бўлиши керак.")
+        return payload
+
+    def _respond(self, status, payload, cache_control="public, max-age=21600"):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self._cors_headers()
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Cache-Control", "public, max-age=21600")
+        self.send_header("Cache-Control", cache_control)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -226,10 +311,12 @@ class PrayerAPIHandler(BaseHTTPRequestHandler):
         return
 
 
-def start_prayer_api_server():
+def start_prayer_api_server(bot_token="", admin_ids=None):
     host = os.environ.get("PRAYER_API_HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", os.environ.get("PRAYER_API_PORT", "8000")))
     server = ThreadingHTTPServer((host, port), PrayerAPIHandler)
+    server.bot_token = bot_token
+    server.admin_ids = set(admin_ids or ())
     thread = threading.Thread(target=server.serve_forever, daemon=True, name="prayer-times-api")
     thread.start()
     print(f"Prayer times API listening on {host}:{port}")
