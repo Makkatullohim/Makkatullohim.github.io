@@ -21,6 +21,7 @@ from telegram.ext import (
     ContextTypes,
 )
 from prayer_times import start_prayer_api_server
+from webapp_api import ensure_webapp_schema, record_user_activity
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -29,6 +30,11 @@ TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 DB_PATH = os.environ.get("BOT_DB_PATH", str(BASE_DIR / "bot_data.sqlite3"))
 TIMEZONE = ZoneInfo(os.environ.get("BOT_TIMEZONE", "Asia/Tashkent"))
 MINI_APP_URL = os.environ.get("MINI_APP_URL", "").strip()
+ADMIN_TELEGRAM_IDS = {
+    int(value.strip())
+    for value in os.environ.get("ADMIN_TELEGRAM_IDS", "").split(",")
+    if value.strip().isdigit()
+}
 
 
 @contextmanager
@@ -72,6 +78,7 @@ def init_db():
                 PRIMARY KEY (user_id, lesson_index)
             )"""
         )
+        ensure_webapp_schema(connection)
 
 
 def today_string():
@@ -152,6 +159,17 @@ def menu_keyboard():
             [InlineKeyboardButton("📖 Қўлланма", callback_data="guide")],
         ]
     )
+
+
+def admin_keyboard():
+    if not MINI_APP_URL.startswith("https://"):
+        return None
+    url = f"{MINI_APP_URL.rstrip('/')}/admin.html"
+    button = KeyboardButton(
+        text="📊 Админ панели",
+        web_app=WebAppInfo(url=url),
+    )
+    return ReplyKeyboardMarkup([[button]], resize_keyboard=True, is_persistent=True)
 
 
 def mini_app_keyboard():
@@ -264,9 +282,12 @@ async def show_today_lesson(target, user_id, lesson_index):
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    record_user_activity(update.effective_user.id)
     message = (
         "Ассалому алайкум!\n\n"
-        "Тўққиз дарснинг барчаси ҳар куни ўқилади. Ҳар бир дарс саноғи кунма-кун алоҳида сақланади."
+        "Telegram орқали профилингиз автоматик яратилади. Синхронлашни ёқсангиз, саноқларингиз бир жойда сақланиб, бошқа қурилмада ҳам очилади.\n\n"
+        "Тўққиз дарснинг барчаси ҳар куни ўқилади. Ҳар бир дарс саноғи кунма-кун алоҳида сақланади.\n\n"
+        "Фойдаланиш статистикаси умумий кўринишда ҳисобланади; қайси матнни ким ўқигани бўйича шахсий тарих сақланмайди."
     )
     app_keyboard = mini_app_keyboard()
     if app_keyboard:
@@ -282,10 +303,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    record_user_activity(update.effective_user.id)
     await show_today(update, update.effective_user.id)
 
 
 async def guide_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    record_user_activity(update.effective_user.id)
     await update.message.reply_text(
         "Қўлланма — дарсни танланг:", reply_markup=guide_keyboard()
     )
@@ -297,8 +320,12 @@ async def delete_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         connection.execute("DELETE FROM daily_progress WHERE user_id = ?", (user_id,))
         connection.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
         connection.execute("DELETE FROM reminders WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM user_activity WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM sync_settings WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM progress_imports WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM progress_operations WHERE user_id = ?", (user_id,))
     await update.message.reply_text(
-        "Кунлик саноқ маълумотларингиз ўчирилди.",
+        "Профилингиз ва саноқ маълумотларингиз ўчирилди. Умумий бўлимлар статистикасида шахсга боғланмайдиган ҳисоблар сақланиши мумкин.",
         reply_markup=menu_keyboard(),
     )
 
@@ -306,6 +333,7 @@ async def delete_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = update.effective_user.id
+    record_user_activity(user_id)
     data = query.data
 
     if data == "menu":
@@ -366,11 +394,36 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    record_user_activity(update.effective_user.id)
     await update.message.reply_text(
         "/today — бугунги 9 дарсни очиш\n"
         "/guide — қўлланмадан дарс танлаш\n"
-        "/delete_data — кунлик саноқларни ўчириш",
+        "/myid — Telegram ID’нгизни кўриш\n"
+        "/admin — админ панели (админлар учун)\n"
+        "/delete_data — профил ва шахсий саноқ маълумотларини ўчириш",
         reply_markup=menu_keyboard(),
+    )
+
+
+async def my_id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    record_user_activity(user_id)
+    await update.message.reply_text(f"Сизнинг Telegram ID’нгиз: {user_id}")
+
+
+async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    record_user_activity(user_id)
+    if user_id not in ADMIN_TELEGRAM_IDS:
+        await update.message.reply_text("Бу бўлим фақат админлар учун.")
+        return
+    keyboard = admin_keyboard()
+    if keyboard is None:
+        await update.message.reply_text("Админ панели учун MINI_APP_URL HTTPS манзили созланмаган.")
+        return
+    await update.message.reply_text(
+        "Умумий фойдаланиш статистикасини кўриш учун панелни очинг.",
+        reply_markup=keyboard,
     )
 
 
@@ -380,13 +433,15 @@ def main():
             "TELEGRAM_BOT_TOKEN муҳит ўзгарувчиси берилмаган. README.md даги йўриқномага қаранг."
         )
     init_db()
-    start_prayer_api_server()
+    start_prayer_api_server(TOKEN, ADMIN_TELEGRAM_IDS)
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("today", today_command))
     application.add_handler(CommandHandler("guide", guide_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("delete_data", delete_data))
+    application.add_handler(CommandHandler("myid", my_id_command))
+    application.add_handler(CommandHandler("admin", admin_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.run_polling()
 
