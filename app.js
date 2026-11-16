@@ -38,6 +38,8 @@ let focusPirMapSelection = false;
 let selectedLesson = null;
 let leafletMap = null;
 let toastTimer;
+let pendingSyncPromise = null;
+let lastTrackedRoute = null;
 
 function localDay() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -147,6 +149,7 @@ function emptyState() {
   return {
     daily: null,
     completedStages: [],
+    sync: { consented: false, dismissed: false, pending: [] },
     memories: {
       pirs: { quota: 1, method: "stages", completed: [], session: null },
       asma: { quota: 3, method: "stages", completed: [], session: null },
@@ -174,6 +177,11 @@ function loadState() {
         ...base,
         ...saved,
         daily,
+        sync: {
+          ...base.sync,
+          ...(saved.sync || {}),
+          pending: Array.isArray(saved.sync?.pending) ? saved.sync.pending : [],
+        },
         memories: {
           ...base.memories,
           ...(saved.memories || {}),
@@ -188,6 +196,133 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+async function webApi(path, method = "GET", payload) {
+  if (!telegramApp?.initData) throw new Error("Telegram профили орқали очинг.");
+  const options = {
+    method,
+    headers: {
+      "X-Telegram-Init-Data": telegramApp.initData,
+    },
+  };
+  if (payload !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(payload);
+  }
+  const response = await fetch(`${prayerApiBase}${path}`, options);
+  let result = {};
+  try { result = await response.json(); } catch (_) {}
+  if (!response.ok) {
+    const error = new Error(result.error || "Серверга уланиб бўлмади.");
+    error.status = response.status;
+    throw error;
+  }
+  return result;
+}
+
+function revokeLocalSync() {
+  state.sync.consented = false;
+  state.sync.dismissed = false;
+  state.sync.pending = [];
+  state.daily = { day: localDay(), counts: {} };
+  state.completedStages = [];
+  state.memories = emptyState().memories;
+  lastTrackedRoute = null;
+  saveState();
+  render(true);
+}
+
+function newOperationId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+}
+
+async function flushPendingProgress() {
+  if (!telegramApp?.initData || !state.sync?.consented) return;
+  if (pendingSyncPromise) return pendingSyncPromise;
+  pendingSyncPromise = (async () => {
+    const today = localDay();
+    state.sync.pending = state.sync.pending.filter((item) => item.day === today);
+    for (const item of [...state.sync.pending]) {
+      try {
+        const endpoint = item.reset ? "/api/progress/reset" : "/api/progress/change";
+        const result = await webApi(endpoint, "POST", item);
+        state.daily.counts[result.stage] = result.count;
+        state.sync.pending = state.sync.pending.filter((pending) => pending.operation_id !== item.operation_id);
+        saveState();
+      } catch (error) {
+        if (error.status === 403) revokeLocalSync();
+        break;
+      }
+    }
+  })();
+  try {
+    await pendingSyncPromise;
+  } finally {
+    pendingSyncPromise = null;
+  }
+}
+
+async function syncProgressOnOpen() {
+  let remote = await webApi("/api/progress");
+  if (remote.needs_import) {
+    const localCounts = state.daily?.day === remote.day ? { ...state.daily.counts } : {};
+    await flushPendingProgress();
+    if (state.sync.pending.length) return;
+    remote = await webApi("/api/progress/import", "POST", { day: remote.day, counts: localCounts });
+  } else {
+    await flushPendingProgress();
+    remote = await webApi("/api/progress");
+  }
+  state.daily = {
+    day: remote.day,
+    counts: Object.fromEntries(remote.counts.map((count, index) => [index, Number(count || 0)])),
+  };
+  saveState();
+  await flushPendingProgress();
+}
+
+async function enableProgressSync(button) {
+  if (button) button.disabled = true;
+  try {
+    await webApi("/api/progress/consent", "POST", {});
+    state.sync.consented = true;
+    state.sync.dismissed = false;
+    saveState();
+    await syncProgressOnOpen();
+    showToast("Профилингиз очилди, саноқлар синхронланди.");
+    render(true);
+  } catch (error) {
+    showToast(error.message || "Синхронлашни ҳозир ёқиб бўлмади.");
+    if (button) button.disabled = false;
+  }
+}
+
+function queueProgressChange(index, amount, reset = false) {
+  const lesson = lessons[index];
+  if (!lesson) return;
+  const previous = Number(state.daily.counts[index] || 0);
+  const count = reset ? 0 : Math.max(0, Math.min(lesson.count, previous + amount));
+  state.daily.counts[index] = count;
+  if (state.sync?.consented && telegramApp?.initData) {
+    state.sync.pending.push({
+      operation_id: newOperationId(),
+      day: state.daily.day,
+      stage: index,
+      amount,
+      reset,
+    });
+  }
+  saveState();
+  return { previous, count, lesson };
+}
+
+function trackSectionView() {
+  const routeKey = `${localDay()}:${route}`;
+  if (!telegramApp?.initData || !state.sync?.consented || lastTrackedRoute === routeKey) return;
+  lastTrackedRoute = routeKey;
+  webApi("/api/analytics/section", "POST", { section: route }).catch(() => {});
 }
 
 function syncDaily() {
@@ -246,6 +381,29 @@ function pageIntro(label, title, description) {
     <h1>${escapeHtml(title)}</h1>
     <p>${escapeHtml(description)}</p>
   </div>`;
+}
+
+function syncConsentMarkup() {
+  return `<div class="sync-consent-overlay" role="presentation">
+    <section class="sync-consent-card" role="dialog" aria-modal="true" aria-labelledby="sync-consent-title">
+      <span class="sync-consent-icon" aria-hidden="true">☁</span>
+      <span class="eyebrow">TELEGRAM ОРҚАЛИ ПРОФИЛЬ</span>
+      <h2 id="sync-consent-title">Саноқларингиз бир жойда сақлансин</h2>
+      <p>Telegram аккаунтингиз орқали профил автоматик очилади. Саноқларингиз бошқа қурилмада ҳам давом этади.</p>
+      <p class="sync-consent-note">Админлар фақат умумий фойдаланиш статистикасини кўради. Қайси матнни ким очгани бўйича шахсий тарих сақланмайди.</p>
+      <div class="button-row">
+        <button class="primary-button gold wide" data-action="enable-sync">Давом этиш ва синхронлаш</button>
+        <button class="secondary-button wide" data-action="later-sync">Ҳозирча локал давом этиш</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function syncReminderMarkup() {
+  return `<aside class="sync-reminder" role="status">
+    <div><strong>Саноқларни Telegram’га боғлаш</strong><small>Бошқа қурилмаларда ҳам давом этинг.</small></div>
+    <button class="secondary-button" data-action="enable-sync">Синхронлаш</button>
+  </aside>`;
 }
 
 function renderCounter(lesson, index, done) {
@@ -1094,6 +1252,10 @@ function render(keepScroll = false) {
   else if (route === "places") app.innerHTML = renderPlaces();
   else app.innerHTML = renderGuide();
   if (route === "places") requestAnimationFrame(addMap);
+  if (telegramApp?.initData && !state.sync?.consented) {
+    app.insertAdjacentHTML("afterbegin", state.sync.dismissed ? syncReminderMarkup() : syncConsentMarkup());
+  }
+  trackSectionView();
   window.scrollTo({ top: keepScroll ? previousScroll : 0, behavior: "smooth" });
 }
 
@@ -1165,7 +1327,13 @@ app.addEventListener("click", (event) => {
   if (!button) return;
   const action = button.dataset.action;
 
-  if (action === "nasihat-next" || action === "nasihat-prev") {
+  if (action === "enable-sync") {
+    void enableProgressSync(button);
+  } else if (action === "later-sync") {
+    state.sync.dismissed = true;
+    saveState();
+    render(true);
+  } else if (action === "nasihat-next" || action === "nasihat-prev") {
     event.preventDefault();
     event.stopPropagation();
     const keepNasihatOpen = app.querySelector(".nasihat-card")?.open || false;
@@ -1185,20 +1353,18 @@ app.addEventListener("click", (event) => {
     const lesson = lessons[index];
     if (!lesson) return;
     const amount = action === "count-one" ? 1 : action === "count-ten" ? 10 : action === "count-hundred" ? 100 : -1;
-    const previous = Number(state.daily.counts[index] || 0);
-    const count = Math.max(0, Math.min(lesson.count, previous + amount));
-    state.daily.counts[index] = count;
-    if (count >= lesson.count && previous < lesson.count) {
+    const result = queueProgressChange(index, amount);
+    if (result.count >= lesson.count && result.previous < lesson.count) {
       showToast(`${lesson.title}: бугунги саноқ бажарилди.`);
     }
-    saveState();
     render(true);
+    void flushPendingProgress().then(() => render(true));
   } else if (action === "count-reset") {
     const index = Number(button.dataset.lesson);
     if (!lessons[index]) return;
-    state.daily.counts[index] = 0;
-    saveState();
+    queueProgressChange(index, 0, true);
     render(true);
+    void flushPendingProgress().then(() => render(true));
   } else if (action === "memory-type") {
     memoryType = button.dataset.type;
     render();
@@ -1339,6 +1505,14 @@ async function boot() {
       try { telegramApp.setHeaderColor("#102c29"); telegramApp.setBackgroundColor("#102c29"); } catch (_) {}
     }
     render();
+    if (telegramApp?.initData && state.sync?.consented) {
+      syncProgressOnOpen()
+        .then(() => render(true))
+        .catch((error) => {
+          if (error.status === 403) revokeLocalSync();
+          else showToast("Саноқлар ҳозирча қурилмада сақланди; интернетни текшириб қайта очинг.");
+        });
+    }
   } catch (error) {
     app.innerHTML = `<div class="empty-box"><strong>Илова очилмади</strong><p>${escapeHtml(error.message)} HTTPS манзилдан қайта очиб кўринг.</p></div>`;
   }
