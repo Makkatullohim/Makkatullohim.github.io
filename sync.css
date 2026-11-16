@@ -1,0 +1,102 @@
+.sync-consent-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  background: rgba(7, 24, 20, .76);
+  backdrop-filter: blur(7px);
+}
+
+.sync-consent-card {
+  width: min(100%, 430px);
+  padding: 26px 22px 20px;
+  border: 1px solid rgba(205, 174, 107, .8);
+  border-radius: 24px;
+  background: #faf6eb;
+  color: #17342e;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .34);
+  text-align: center;
+}
+
+.sync-consent-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e9dfc5;
+  color: #1d6d57;
+  font-size: 28px;
+}
+
+.sync-consent-card h2 {
+  margin: 8px 0 10px;
+  font-size: clamp(22px, 6vw, 28px);
+  line-height: 1.2;
+}
+
+.sync-consent-card p {
+  margin: 0 0 14px;
+  line-height: 1.55;
+}
+
+.sync-consent-card .sync-consent-note {
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #f0eadb;
+  color: #52635a;
+  font-size: 13px;
+}
+
+.sync-consent-card .button-row {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.sync-consent-card button:disabled {
+  cursor: wait;
+  opacity: .68;
+}
+
+.sync-reminder {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(205, 174, 107, .55);
+  border-radius: 15px;
+  background: #f7f0df;
+  color: #17342e;
+}
+
+.sync-reminder div {
+  display: grid;
+  gap: 3px;
+}
+
+.sync-reminder small {
+  color: #68776e;
+}
+
+.sync-reminder button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 420px) {
+  .sync-consent-card {
+    padding: 22px 17px 17px;
+  }
+
+  .sync-reminder {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
